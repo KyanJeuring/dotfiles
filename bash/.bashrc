@@ -515,7 +515,7 @@ cleanupbranches() {
 }
 
 ## Show commits that would be promoted
-whatwilldeploy() {
+whatwillpromote() {
   echo -e "$INFO Commits that would be promoted:"
   git log main..dev --oneline --decorate
 }
