@@ -18,68 +18,12 @@ INFO="${BLUE}[INFO]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
 
 # ==================================================
-# Git aliases
-# ==================================================
-
-alias gs='git status'
-alias ga='git add .'
-alias gr='git restore .'
-alias gpr='git pull --rebase'
-alias gl='git log --oneline --graph --all --decorate'
-alias gfp='git fetch -p'
-alias gus='git reset --soft HEAD~1'
-alias guh='git reset --hard HEAD~1'
-alias gsync='git switch dev && git pull origin main --rebase'
-alias gabort='git merge --abort'
-alias gdiffdeploy='git log main..dev --oneline --decorate'
-
-# ==================================================
-# Docker aliases
-# ==================================================
-
-alias dstart='docker compose start'
-alias dstop='docker compose stop'
-alias dcompose='docker compose up -d --build --remove-orphans'
-alias ddown='docker compose down -v'
-alias drestart='docker compose down && docker compose up -d'
-alias dstopall='docker ps -aq | xargs -r docker stop'
-alias drecompose='docker compose down -v && docker compose up -d'
-
-# ==================================================
 # Utility helpers
 # ==================================================
 
-## Show an overview of aliases and functions
+## Show an overview of custom bash commands
 bashrc() {
-  echo -e "$INFO Aliases"
-  echo
-
-  awk '
-    # Detect real section headers (ignore separators and ## docs)
-    /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
-      section = substr($0, 3)
-      next
-    }
-
-    /^alias / && section != "" {
-      sub(/^alias /, "", $0)
-      printf "[%s]\n%s\n", section, $0
-    }
-  ' "${BASH_SOURCE[0]}" |
-  awk '
-    /^\[/ {
-      if ($0 != last) {
-        if (NR > 1) print ""
-        print $0
-        last = $0
-      }
-      next
-    }
-    { print "  " $0 }
-  '
-
-  echo
-  echo -e "$INFO Functions"
+  echo -e "$INFO Custom bash commands"
   echo
 
   awk '
@@ -112,26 +56,185 @@ bashrc() {
   '
 }
 
-## Ask for y/N confirmation
 confirm() {
   read -rp "$1 (y/N): " ans
   [[ "$ans" == "y" ]]
 }
 
-## Check availability of common dev tools
-envcheck() {
-  for cmd in git docker docker-compose node npm; do
-    if command -v "$cmd" >/dev/null; then
-      echo -e "$OK $cmd installed"
-    else
-      echo -e "$ERR $cmd missing"
-    fi
-  done
+## Find files by name (case-insensitive)
+ff() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: ff <pattern>"
+    return 1
+  }
+
+  find . -iname "*$1*" 2>/dev/null
 }
 
 # ==================================================
-# Git workflow helpers
+# File & search commands (cross-platform)
 # ==================================================
+
+## Search text in files (fallback-safe)
+grepall() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: grepall <text>"
+    return 1
+  }
+
+  if command -v rg >/dev/null; then
+    rg "$1"
+  else
+    grep -R "$1" .
+  fi
+}
+
+## Show directory sizes (top-level only)
+dus() {
+  {
+    du -sh . 2>/dev/null | sed 's|^\(.*\)[[:space:]]\+\.$|\1\t(total)|'
+    du -sh ./* 2>/dev/null
+    du -sh ./.??* 2>/dev/null
+  } | sort -h
+}
+
+
+## Count lines of code
+loc() {
+  find . -type f ! -path "./.git/*" -exec wc -l {} + | tail -n 1
+}
+
+## Backup a file or directory
+bu() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: bu <file|dir>"
+    return 1
+  }
+
+  cp -r "$1" "$1.back-up.$(date +%Y%m%d-%H%M%S)"
+  echo -e "$OK Backup created"
+}
+
+## Make executable
+x() {
+  chmod +x "$@"
+}
+
+# ==================================================
+# Navigation commands (cross-platform)
+# ==================================================
+
+## Go to home directory
+home() {
+  cd "$HOME" || return 1
+}
+
+## Go up N directories (default: 1)
+up() {
+  local levels="${1:-1}"
+  local path="."
+
+  [[ ! "$levels" =~ ^[0-9]+$ ]] && {
+    echo -e "$ERR Argument must be a number"
+    return 1
+  }
+
+  for ((i=0; i<levels; i++)); do
+    path="$path/.."
+  done
+
+  cd "$path" || return 1
+}
+
+## Create directory and enter it
+mkcd() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR No directory specified"
+    return 1
+  }
+
+  mkdir -p "$1" && cd "$1" || return 1
+}
+
+## Go to previous directory
+back() {
+  cd - >/dev/null || return 1
+}
+
+## Jump to git repository root
+root() {
+  local r
+  r=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo -e "$ERR Not inside a git repository"
+    return 1
+  }
+
+  cd "$r" || return 1
+}
+
+# ==================================================
+# Git commands
+# ==================================================
+
+## Show git status
+gs() {
+  git status
+}
+
+## Stage all changes
+ga() {
+  git add .
+}
+
+## Restore changes
+gr() {
+  git restore .
+}
+
+## Restore staged changes
+grs() {
+  git restore --staged .
+}
+
+## Pull with rebase
+gpr() {
+  git pull --rebase
+}
+
+## Pretty git log
+gl() {
+  git log --oneline --graph --all --decorate
+}
+
+## Prune deleted remote branches
+gfp() {
+  git fetch -p
+}
+
+## Undo last commit (soft)
+gus() {
+  git reset --soft HEAD~1
+}
+
+## Undo last commit (hard)
+guh() {
+  git reset --hard HEAD~1
+}
+
+## Sync dev with main
+gsync() {
+  git switch dev && git pull origin main --rebase
+}
+
+## Abort current merge
+gabort() {
+  git merge --abort
+}
+
+## Show commits pending promotion
+gdiffpromote() {
+  git log main..dev --oneline --decorate
+}
 
 ## Switch to branch, pull latest, show status
 workon() {
@@ -189,7 +292,7 @@ promote() {
 
   LOCKDIR="/tmp/git-promote.lock"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    echo -e "$ERR Another promotion is already running"
+    echo -e "$ERR Another promote is already running"
     return 1
   fi
 
@@ -202,10 +305,12 @@ promote() {
     rmdir "$LOCKDIR" >/dev/null 2>&1 || true
   }
 
+  trap cleanup RETURN
   trap cleanup EXIT
+  trap 'echo -e "$ERR Deploy interrupted"; return 1' INT TERM
 
   if [[ "$original" != "dev" ]]; then
-    echo -e "$ERR Must be run from dev (current: $original)"
+    echo -e "$ERR Deploy must be run from dev (current: $original)"
     return 1
   fi
 
@@ -215,7 +320,7 @@ promote() {
   fi
 
   if [[ -z "$(git log main..dev --oneline)" ]]; then
-    echo -e "$INFO Nothing to promote (dev == main)"
+    echo -e "$INFO Nothing to deploy (dev == main)"
     return 0
   fi
 
@@ -232,26 +337,66 @@ promote() {
   git merge --no-ff dev || return 1
 
   echo -e "$INFO Pushing main"
-  git push origin main || {
+  if ! git push origin main; then
     echo -e "$ERR Push failed, rolling back local main"
     git reset --hard origin/main
     return 1
-  }
+  fi
 
-  tag="release-$(date +%Y%m%d-%H%M%S)"
-  echo -e "$INFO Tagging release ($tag)"
-  git tag -a "$tag" -m "Release" || return 1
+  echo -e "$INFO Tagging deploy"
+  tag="deploy-$(date +%Y%m%d-%H%M%S)"
+  git tag -a "$tag" -m "Production deploy" || return 1
   git push origin "$tag" || return 1
 
-  echo -e "$OK Promotion successful ($tag)"
+  echo -e "$OK Deploy successful ($tag)"
 }
 
 # ==================================================
-# Docker workflows
+# Docker commands
 # ==================================================
 
+## List running containers with status and ports
+dps() {
+  docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+}
+
+## Start docker compose services
+dstart() {
+  docker compose start
+}
+
+## Stop docker compose services
+dstop() {
+  docker compose stop
+}
+
+## Build and start docker stack
+dcompose() {
+  docker compose up -d --build --remove-orphans
+}
+
+## Stop and remove containers + volumes
+ddown() {
+  docker compose down -v
+}
+
+## Restart docker stack
+drestart() {
+  docker compose down && docker compose up -d
+}
+
+## Stop all running containers
+dstopall() {
+  docker ps -aq | xargs -r docker stop
+}
+
+## Recreate docker stack with volume removal
+drecompose() {
+  docker compose down -v && docker compose up -d
+}
+
 ## Restart docker compose stack
-rebootstack() {
+drebootstack() {
   echo -e "$INFO Restarting docker stack"
   docker compose down || return 1
   docker compose up -d || return 1
@@ -259,7 +404,7 @@ rebootstack() {
 }
 
 ## Fully reset docker stack (destructive)
-resetstack() {
+dresetstack() {
   echo -e "$WARN This will remove containers, networks, and volumes"
   confirm "Continue?" || return 1
 
