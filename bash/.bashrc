@@ -172,7 +172,7 @@ root() {
 }
 
 # ==================================================
-# Git safety helpers
+# Git safety helpers (internal)
 # ==================================================
 
 _guard_main_rewrite() {
@@ -181,25 +181,22 @@ _guard_main_rewrite() {
   branch=$(git branch --show-current 2>/dev/null) || return 1
   upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null) || true
 
-  # Show the commit that will be removed
   commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || return 1
   commit_msg=$(git log -1 --pretty=%s 2>/dev/null) || return 1
 
-  # Only guard on main
   [[ "$branch" != "main" ]] && return 0
 
   echo -e "$WARN You are on MAIN and about to rewrite history"
   [[ -n "$upstream" ]] && echo -e "$WARN Upstream: $upstream"
 
-  # If upstream isn't main-ish, scream louder (still allow, but make it obvious)
   if [[ -n "$upstream" && "$upstream" != */main ]]; then
     echo -e "$WARN NOTE: upstream does not look like main (it is '$upstream')"
   fi
 
   echo -e "$WARN Commit to be removed: $commit_hash  $commit_msg"
   echo -e "$WARN This affects everyone pulling from main."
-
   echo
+
   read -rp "Type 'MAIN $commit_hash' to continue: " ans
   [[ "$ans" == "MAIN $commit_hash" ]]
 }
@@ -215,7 +212,7 @@ _abort_reset() {
 }
 
 # ==================================================
-# Git commands
+# Git status & inspection
 # ==================================================
 
 ## Show git status
@@ -223,13 +220,33 @@ gs() {
   git status
 }
 
+## Pretty git log
+gl() {
+  git log --oneline --graph --all --decorate
+}
+
+## Show commits pending promotion
+gdiffpromote() {
+  git log main..dev --oneline --decorate
+}
+
+## Show commits that would be promoted
+whatwillpromote() {
+  echo -e "$INFO Commits that would be promoted:"
+  git log main..dev --oneline --decorate
+}
+
+# ==================================================
+# Git staging & restore
+# ==================================================
+
 ## Stage all changes
 ga() {
   git add .
   echo -e "$OK All changes staged"
 }
 
-## Restore changes
+## Restore unstaged changes
 gr() {
   if git diff --quiet; then
     echo -e "$INFO No unstaged changes to restore"
@@ -257,20 +274,28 @@ grs() {
   echo -e "$OK Staged changes restored"
 }
 
+# ==================================================
+# Git sync & fetch
+# ==================================================
+
 ## Pull with rebase
 gpr() {
   git pull --rebase
-}
-
-## Pretty git log
-gl() {
-  git log --oneline --graph --all --decorate
 }
 
 ## Prune deleted remote branches
 gfp() {
   git fetch -p
 }
+
+## Abort current merge
+gabort() {
+  git merge --abort
+}
+
+# ==================================================
+# Git undo — local commits
+# ==================================================
 
 ## Undo last commit (soft)
 gus() {
@@ -289,39 +314,6 @@ gus() {
   git reset --soft HEAD~1 &&
   echo -e "$OK Last commit undone (soft)"
   echo -e "$INFO Use 'gus --abort' to restore previous HEAD if needed"
-}
-
-## Undo last remote commit (soft)
-gurs() {
-  local branch commit_count
-  branch=$(git branch --show-current)
-
-  [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
-    echo -e "$ERR No upstream branch set"
-    return 1
-  }
-
-  if ! git rev-parse HEAD >/dev/null 2>&1; then
-    echo -e "$ERR Repository has no commits"
-    return 1
-  fi
-
-  commit_count=$(git rev-list --count HEAD)
-
-  # Cannot soft-reset the root commit
-  if (( commit_count < 2 )); then
-    echo -e "$ERR Cannot remove the initial (root) commit"
-    echo -e "$INFO Git cannot reset past the first commit"
-    echo -e "$INFO Use 'git commit --amend' instead"
-    return 1
-  fi
-
-  _guard_main_rewrite || return 1
-
-  echo -e "$INFO Removing latest commit on '$branch' (soft)"
-  git reset --soft HEAD~1 &&
-  git push --force-with-lease &&
-  echo -e "$OK Latest commit removed (soft)"
 }
 
 ## Undo last commit (hard)
@@ -350,6 +342,34 @@ guh() {
   echo -e "$INFO Use 'guh --abort' immediately to restore previous HEAD if needed"
 }
 
+# ==================================================
+# Git undo — remote commits (DANGEROUS)
+# ==================================================
+
+## Undo last remote commit (soft)
+gurs() {
+  local branch commit_count
+  branch=$(git branch --show-current)
+
+  [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
+    echo -e "$ERR No upstream branch set"
+    return 1
+  }
+
+  commit_count=$(git rev-list --count HEAD)
+  (( commit_count < 2 )) && {
+    echo -e "$ERR Cannot remove the initial (root) commit"
+    return 1
+  }
+
+  _guard_main_rewrite || return 1
+
+  echo -e "$INFO Removing latest commit on '$branch' (soft)"
+  git reset --soft HEAD~1 &&
+  git push --force-with-lease &&
+  echo -e "$OK Latest commit removed (soft)"
+}
+
 ## Undo last remote commit (hard)
 gurh() {
   local branch commit_count
@@ -360,21 +380,11 @@ gurh() {
     return 1
   }
 
-  # Ensure repo has commits
-  if ! git rev-parse HEAD >/dev/null 2>&1; then
-    echo -e "$ERR Repository has no commits"
-    return 1
-  fi
-
   commit_count=$(git rev-list --count HEAD)
-
-  # Cannot hard-reset the initial commit
-  if (( commit_count < 2 )); then
+  (( commit_count < 2 )) && {
     echo -e "$ERR Cannot remove the initial (root) commit"
-    echo -e "$INFO Git cannot hard-reset past the first commit"
-    echo -e "$INFO Use 'git commit --amend' or recreate the branch instead"
     return 1
-  fi
+  }
 
   _guard_main_rewrite || return 1
 
@@ -388,19 +398,13 @@ gurh() {
   echo -e "$OK Latest commit permanently removed"
 }
 
+# ==================================================
+# Git branch workflows
+# ==================================================
+
 ## Sync dev with main
 gsync() {
   git switch dev && git pull origin main --rebase
-}
-
-## Abort current merge
-gabort() {
-  git merge --abort
-}
-
-## Show commits pending promotion
-gdiffpromote() {
-  git log main..dev --oneline --decorate
 }
 
 ## Switch to branch, pull latest, show status
@@ -424,6 +428,32 @@ workon() {
 
   git status
 }
+
+## Delete merged child branches of current branch
+cleanupbranches() {
+  local current
+  current=$(git branch --show-current)
+
+  echo -e "$INFO Cleaning up merged branches of '$current'"
+
+  git branch --merged | while read -r branch; do
+    [[ "$branch" == "*"* ]] && continue
+    [[ "$branch" == "$current" ]] && continue
+    [[ "$branch" == "main" || "$branch" == "dev" ]] && continue
+
+    base=$(git merge-base "$current" "$branch")
+    if [[ "$base" == "$(git rev-parse "$current")" ]]; then
+      echo -e "$INFO Deleting branch '$branch'"
+      git branch -d "$branch"
+    fi
+  done
+
+  echo -e "$OK Branch cleanup complete"
+}
+
+# ==================================================
+# Git destructive sync
+# ==================================================
 
 ## Force dev to match origin/main (destructive)
 syncdev() {
@@ -492,33 +522,9 @@ syncdev() {
   echo -e "$INFO Use 'syncdev --abort' to restore this state"
 }
 
-## Delete merged child branches of current branch
-cleanupbranches() {
-  local current
-  current=$(git branch --show-current)
-
-  echo -e "$INFO Cleaning up merged branches of '$current'"
-
-  git branch --merged | while read -r branch; do
-    [[ "$branch" == "*"* ]] && continue
-    [[ "$branch" == "$current" ]] && continue
-    [[ "$branch" == "main" || "$branch" == "dev" ]] && continue
-
-    base=$(git merge-base "$current" "$branch")
-    if [[ "$base" == "$(git rev-parse "$current")" ]]; then
-      echo -e "$INFO Deleting branch '$branch'"
-      git branch -d "$branch"
-    fi
-  done
-
-  echo -e "$OK Branch cleanup complete"
-}
-
-## Show commits that would be promoted
-whatwillpromote() {
-  echo -e "$INFO Commits that would be promoted:"
-  git log main..dev --oneline --decorate
-}
+# ==================================================
+# Git release / promotion
+# ==================================================
 
 ## Promote dev → main and create a release tag
 promote() {
@@ -586,7 +592,7 @@ promote() {
 }
 
 # ==================================================
-# Docker commands
+# Docker stack lifecycle
 # ==================================================
 
 ## List running containers with status and ports
@@ -629,7 +635,7 @@ drecompose() {
   docker compose down -v && docker compose up -d
 }
 
-## Restart docker compose stack
+## Restart docker compose stack (safe + verbose)
 drebootstack() {
   echo -e "$INFO Restarting docker stack"
   docker compose down || return 1
@@ -645,4 +651,129 @@ dresetstack() {
   docker compose down -v || return 1
   docker system prune -f
   echo -e "$OK Docker stack fully reset"
+}
+
+# ==================================================
+# Docker logs & debugging
+# ==================================================
+
+## Follow logs for all services
+dlogs() {
+  docker compose logs -f --tail=100
+}
+
+## Follow logs for a single service
+dlog() {
+  docker compose logs -f --tail=100 "$1"
+}
+
+## Live container resource usage
+dstats() {
+  docker stats
+}
+
+## Inspect a container (JSON output)
+dinspect() {
+  docker inspect "$1" | less
+}
+
+# ==================================================
+# Docker exec & run
+# ==================================================
+
+## Exec into a running container (default shell)
+dexec() {
+  docker compose exec "$1" sh
+}
+
+## Run one-off commands in a service
+drun() {
+  docker compose run --rm "$@"
+}
+
+# ==================================================
+# Docker images & volumes
+# ==================================================
+
+## List images with size
+dimg() {
+  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+}
+
+## List docker volumes
+dvol() {
+  docker volume ls
+}
+
+## Inspect a docker volume
+dvolinspect() {
+  docker volume inspect "$1"
+}
+
+# ==================================================
+# Docker cleanup
+# ==================================================
+
+## Remove stopped containers
+dclean() {
+  docker container prune -f
+}
+
+## Remove dangling images
+dcleani() {
+  docker image prune -f
+}
+
+## Full cleanup (destructive)
+dcleanall() {
+  echo -e "$WARN Removing unused containers, images, and networks"
+  confirm "Continue?" || return 1
+  docker system prune -a
+}
+
+## Show what prune would remove
+dprunewhat() {
+  docker system prune --dry-run
+}
+
+# ==================================================
+# Docker updates & rebuilds
+# ==================================================
+
+## Pull latest images
+dpull() {
+  docker compose pull
+}
+
+## Pull images and recreate containers
+dupdate() {
+  docker compose pull && docker compose up -d
+}
+
+## Rebuild and restart a single service
+drebuild() {
+  docker compose build "$1" && docker compose up -d "$1"
+}
+
+# ==================================================
+# Docker networking
+# ==================================================
+
+## List docker networks
+dnet() {
+  docker network ls
+}
+
+## Inspect a docker network
+dnetinspect() {
+  docker network inspect "$1"
+}
+
+# ==================================================
+# Docker compose utilities
+# ==================================================
+
+## Show resolved docker compose config
+dconfig() {
+  docker compose config
 }
