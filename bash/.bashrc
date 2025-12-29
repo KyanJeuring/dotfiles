@@ -42,7 +42,7 @@ bashrc() {
         printf "[%s]\n%-22s %s\n", section, name, desc
       }
     }
-  ' "${BASH_SOURCE[0]}" |
+  ' "${BASH_SOURCE[${#BASH_SOURCE[@]}-1]}" |
   awk '
     /^\[/ {
       if ($0 != last) {
@@ -58,8 +58,12 @@ bashrc() {
 
 confirm() {
   read -rp "$1 (y/N): " ans
-  [[ "$ans" == "y" ]]
+  [[ "$ans" =~ ^[Yy]$ ]]
 }
+
+# ==================================================
+# File & search commands (cross-platform)
+# ==================================================
 
 ## Find files by name (case-insensitive)
 ff() {
@@ -70,10 +74,6 @@ ff() {
 
   find . -iname "*$1*" 2>/dev/null
 }
-
-# ==================================================
-# File & search commands (cross-platform)
-# ==================================================
 
 ## Search text in files (fallback-safe)
 grepall() {
@@ -93,11 +93,9 @@ grepall() {
 dus() {
   {
     du -sh . 2>/dev/null | sed 's|^\(.*\)[[:space:]]\+\.$|\1\t(total)|'
-    du -sh ./* 2>/dev/null
-    du -sh ./.??* 2>/dev/null
+    du -sh ./* ./.??* 2>/dev/null
   } | sort -h
 }
-
 
 ## Count lines of code
 loc() {
@@ -118,6 +116,7 @@ bu() {
 ## Make executable
 x() {
   chmod +x "$@"
+  echo -e "$OK Made executable: $*"
 }
 
 # ==================================================
@@ -188,12 +187,30 @@ ga() {
 
 ## Restore changes
 gr() {
+  if git diff --quiet; then
+    echo -e "$INFO No unstaged changes to restore"
+    return 0
+  fi
+
+  echo -e "$WARN This will discard ALL unstaged changes"
+  confirm "Continue?" || return 1
+
   git restore .
+  echo -e "$OK Changes restored"
 }
 
 ## Restore staged changes
 grs() {
+  if git diff --cached --quiet; then
+    echo -e "$INFO No staged changes to restore"
+    return 0
+  fi
+
+  echo -e "$WARN This will unstage ALL staged changes"
+  confirm "Continue?" || return 1
+
   git restore --staged .
+  echo -e "$OK Staged changes restored"
 }
 
 ## Pull with rebase
@@ -214,12 +231,67 @@ gfp() {
 ## Undo last commit (soft)
 gus() {
   git reset --soft HEAD~1
+  echo -e "$OK Last commit undone (soft)"
 }
+
+## Undo last remote commit (soft)
+gurs() {
+  local branch
+  branch=$(git branch --show-current)
+
+  [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
+    echo -e "$ERR No upstream branch set"
+    return 1
+  }
+
+  if [[ "$branch" == "main" ]]; then
+    echo -e "$WARN You are about to rewrite history on MAIN"
+    echo -e "$WARN This affects everyone pulling from main"
+    read -rp "Type 'MAIN' to continue: " ans
+    [[ "$ans" == "MAIN" ]] || return 1
+
+  fi
+
+  echo -e "$INFO Reverting last commit on '$branch' (soft)"
+  git reset --soft HEAD~1 &&
+  git push --force-with-lease
+  echo -e "$OK Last remote commit undone (soft)"
+}
+
 
 ## Undo last commit (hard)
 guh() {
+  echo -e "$WARN This will discard all changes from the last commit"
+  confirm "Continue?" || return 1
+
   git reset --hard HEAD~1
 }
+
+## Undo last remote commit (hard)
+gurh() {
+  local branch
+  branch=$(git branch --show-current)
+
+  [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
+    echo -e "$ERR No upstream branch set"
+    return 1
+  }
+
+  if [[ "$branch" == "main" ]]; then
+    echo -e "$WARN DANGER ZONE"
+    echo -e "$WARN You are about to PERMANENTLY remove the last commit on MAIN"
+    echo -e "$WARN This cannot be undone for other collaborators"
+    read -rp "Type 'MAIN' to continue: " ans
+    [[ "$ans" == "MAIN" ]] || return 1
+  else
+    echo -e "$WARN This will permanently remove the last commit on '$branch'"
+    confirm "Continue?" || return 1
+  fi
+
+  git reset --hard HEAD~1 &&
+  git push --force-with-lease
+}
+
 
 ## Sync dev with main
 gsync() {
@@ -238,9 +310,23 @@ gdiffpromote() {
 
 ## Switch to branch, pull latest, show status
 workon() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: workon <branch>"
+    return 1
+  }
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo -e "$ERR Working tree is dirty"
+    echo -e "$INFO Commit or stash your changes before switching branches"
+    return 1
+  fi
+
   echo -e "$INFO Switching to branch '$1'"
   git switch "$1" || return 1
+
+  echo -e "$INFO Pulling latest changes"
   git pull || return 1
+
   git status
 }
 
@@ -249,13 +335,47 @@ syncdev() {
   local current
   current=$(git branch --show-current)
 
-  echo -e "$INFO Syncing dev with origin/main"
-  git switch dev || return 1
+  # Ensure clean working tree
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo -e "$ERR Working tree is dirty"
+    echo -e "$INFO Commit or stash your changes first"
+    return 1
+  fi
+
+  echo -e "$WARN This will RESET 'dev' to match 'origin/main'"
+  echo -e "$WARN ALL local commits on dev will be LOST"
+
+  if [[ -n "$(git log origin/main..dev --oneline 2>/dev/null)" ]]; then
+    echo
+    echo -e "$INFO Commits that will be removed:"
+    git log origin/main..dev --oneline --decorate
+    echo
+  else
+    echo -e "$INFO No local-only commits on dev"
+  fi
+
+  confirm "Continue?" || return 1
+
+  echo -e "$INFO Fetching origin"
   git fetch origin || return 1
+
+  echo -e "$INFO Switching to dev"
+  git switch dev || return 1
+
+  backup_tag="backup-dev-$(date +%Y%m%d-%H%M%S)"
+  echo -e "$INFO Creating backup tag: $backup_tag"
+  git tag "$backup_tag" || return 1
+
+  echo -e "$INFO Resetting dev → origin/main"
   git reset --hard origin/main || return 1
 
-  [[ "$current" != "dev" ]] && git switch "$current"
-  echo -e "$OK dev is now in sync with main"
+  if [[ "$current" != "dev" ]]; then
+    git switch "$current" >/dev/null 2>&1 || \
+      echo -e "$WARN Manual switch back to '$current' required"
+  fi
+
+  echo -e "$OK dev is now in sync with origin/main"
+  echo -e "$INFO Backup tag created: $backup_tag"
 }
 
 ## Delete merged child branches of current branch
