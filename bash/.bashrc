@@ -172,6 +172,39 @@ root() {
 }
 
 # ==================================================
+# Git safety helpers
+# ==================================================
+
+_guard_main_rewrite() {
+  local branch upstream commit_hash commit_msg
+
+  branch=$(git branch --show-current 2>/dev/null) || return 1
+  upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null) || true
+
+  # Show the commit that will be removed
+  commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || return 1
+  commit_msg=$(git log -1 --pretty=%s 2>/dev/null) || return 1
+
+  # Only guard on main
+  [[ "$branch" != "main" ]] && return 0
+
+  echo -e "$WARN You are on MAIN and about to rewrite history"
+  [[ -n "$upstream" ]] && echo -e "$WARN Upstream: $upstream"
+
+  # If upstream isn't main-ish, scream louder (still allow, but make it obvious)
+  if [[ -n "$upstream" && "$upstream" != */main ]]; then
+    echo -e "$WARN NOTE: upstream does not look like main (it is '$upstream')"
+  fi
+
+  echo -e "$WARN Commit to be removed: $commit_hash  $commit_msg"
+  echo -e "$WARN This affects everyone pulling from main."
+
+  echo
+  read -rp "Type 'MAIN $commit_hash' to continue: " ans
+  [[ "$ans" == "MAIN $commit_hash" ]]
+}
+
+# ==================================================
 # Git commands
 # ==================================================
 
@@ -247,7 +280,7 @@ gus() {
 
 ## Undo last remote commit (soft)
 gurs() {
-  local branch
+  local branch commit_count
   branch=$(git branch --show-current)
 
   [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
@@ -255,22 +288,27 @@ gurs() {
     return 1
   }
 
-  if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-    echo -e "$ERR No commit to undo"
+  if ! git rev-parse HEAD >/dev/null 2>&1; then
+    echo -e "$ERR Repository has no commits"
     return 1
   fi
 
-  if [[ "$branch" == "main" ]]; then
-    echo -e "$WARN You are about to rewrite history on MAIN"
-    echo -e "$WARN This affects everyone pulling from main"
-    read -rp "Type 'MAIN' to continue: " ans
-    [[ "$ans" == "MAIN" ]] || return 1
+  commit_count=$(git rev-list --count HEAD)
+
+  # Cannot soft-reset the root commit
+  if (( commit_count < 2 )); then
+    echo -e "$ERR Cannot remove the initial (root) commit"
+    echo -e "$INFO Git cannot reset past the first commit"
+    echo -e "$INFO Use 'git commit --amend' instead"
+    return 1
   fi
 
-  echo -e "$INFO Reverting last commit on '$branch' (soft)"
+  _guard_main_rewrite || return 1
+
+  echo -e "$INFO Removing latest commit on '$branch' (soft)"
   git reset --soft HEAD~1 &&
   git push --force-with-lease &&
-  echo -e "$OK Last remote commit undone (soft)"
+  echo -e "$OK Latest commit removed (soft)"
 }
 
 ## Undo last commit (hard)
@@ -303,7 +341,7 @@ guh() {
 
 ## Undo last remote commit (hard)
 gurh() {
-  local branch
+  local branch commit_count
   branch=$(git branch --show-current)
 
   [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
@@ -311,20 +349,32 @@ gurh() {
     return 1
   }
 
-  if [[ "$branch" == "main" ]]; then
-    echo -e "$WARN DANGER ZONE"
-    echo -e "$WARN You are about to PERMANENTLY remove the last commit on MAIN"
-    echo -e "$WARN This cannot be undone for other collaborators"
-    read -rp "Type 'MAIN' to continue: " ans
-    [[ "$ans" == "MAIN" ]] || return 1
-  else
-    echo -e "$WARN This will permanently remove the last commit on '$branch'"
+  # Ensure repo has commits
+  if ! git rev-parse HEAD >/dev/null 2>&1; then
+    echo -e "$ERR Repository has no commits"
+    return 1
+  fi
+
+  commit_count=$(git rev-list --count HEAD)
+
+  # Cannot hard-reset the initial commit
+  if (( commit_count < 2 )); then
+    echo -e "$ERR Cannot remove the initial (root) commit"
+    echo -e "$INFO Git cannot hard-reset past the first commit"
+    echo -e "$INFO Use 'git commit --amend' or recreate the branch instead"
+    return 1
+  fi
+
+  _guard_main_rewrite || return 1
+
+  if [[ "$branch" != "main" ]]; then
+    echo -e "$WARN This will permanently remove the latest commit on '$branch'"
     confirm "Continue?" || return 1
   fi
 
   git reset --hard HEAD~1 &&
   git push --force-with-lease &&
-  echo -e "$OK Last remote commit discarded (hard)"
+  echo -e "$OK Latest commit permanently removed"
 }
 
 ## Sync dev with main
