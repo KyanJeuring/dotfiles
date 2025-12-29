@@ -204,6 +204,16 @@ _guard_main_rewrite() {
   [[ "$ans" == "MAIN $commit_hash" ]]
 }
 
+_abort_reset() {
+  git rev-parse ORIG_HEAD >/dev/null 2>&1 || {
+    echo -e "$ERR No reset to abort"
+    return 1
+  }
+
+  git reset --hard ORIG_HEAD &&
+  echo -e "$OK Operation aborted"
+}
+
 # ==================================================
 # Git commands
 # ==================================================
@@ -264,29 +274,17 @@ gfp() {
 
 ## Undo last commit (soft)
 gus() {
-  if [[ "$1" == "--abort" ]]; then
-    if ! git rev-parse ORIG_HEAD >/dev/null 2>&1; then
-      echo -e "$ERR No gus operation to abort"
-      return 1
-    fi
+  [[ "$1" == "--abort" ]] && { _abort_reset; return $?; }
 
-    echo -e "$INFO Aborting gus (restoring previous HEAD)"
-    git reset --hard ORIG_HEAD &&
-    echo -e "$OK gus aborted"
-    return 0
-  fi
-
-  local commit_count
-  if ! git rev-parse HEAD >/dev/null 2>&1; then
+  git rev-parse HEAD >/dev/null 2>&1 || {
     echo -e "$ERR Repository has no commits"
     return 1
-  fi
+  }
 
-  commit_count=$(git rev-list --count HEAD)
-  if (( commit_count < 2 )); then
+  (( $(git rev-list --count HEAD) < 2 )) && {
     echo -e "$INFO Nothing to undo"
     return 0
-  fi
+  }
 
   git reset --soft HEAD~1 &&
   echo -e "$OK Last commit undone (soft)"
@@ -328,36 +326,28 @@ gurs() {
 
 ## Undo last commit (hard)
 guh() {
-  if [[ "$1" == "--abort" ]]; then
-    if ! git rev-parse ORIG_HEAD >/dev/null 2>&1; then
-      echo -e "$ERR No guh operation to abort"
-      return 1
-    fi
-
+  [[ "$1" == "--abort" ]] && {
     echo -e "$WARN guh --abort only works immediately after guh"
-    git reset --hard ORIG_HEAD &&
-    echo -e "$OK guh aborted"
-    return 0
-  fi
+    _abort_reset
+    return $?
+  }
 
-  local commit_count
-  if ! git rev-parse HEAD >/dev/null 2>&1; then
+  git rev-parse HEAD >/dev/null 2>&1 || {
     echo -e "$ERR Repository has no commits"
     return 1
-  fi
+  }
 
-  commit_count=$(git rev-list --count HEAD)
-  if (( commit_count < 2 )); then
+  (( $(git rev-list --count HEAD) < 2 )) && {
     echo -e "$INFO Nothing to discard"
     return 0
-  fi
+  }
 
   echo -e "$WARN This will permanently discard the last commit"
   confirm "Continue?" || return 1
 
   git reset --hard HEAD~1 &&
   echo -e "$OK Last commit discarded (hard)"
-  echo -e "$INFO Use 'guh --abort' to restore previous HEAD if needed"
+  echo -e "$INFO Use 'guh --abort' immediately to restore previous HEAD if needed"
 }
 
 ## Undo last remote commit (hard)
@@ -437,10 +427,28 @@ workon() {
 
 ## Force dev to match origin/main (destructive)
 syncdev() {
+  if [[ "$1" == "--abort" ]]; then
+    local tag
+    tag=$(git tag --list 'backup-dev-*' --sort=-creatordate | head -n1)
+
+    if [[ -z "$tag" ]]; then
+      echo -e "$ERR No backup tag found to abort syncdev"
+      return 1
+    fi
+
+    echo -e "$INFO Aborting syncdev"
+    echo -e "$INFO Restoring dev from backup tag: $tag"
+
+    git switch dev >/dev/null 2>&1 || return 1
+    git reset --hard "$tag" || return 1
+
+    echo -e "$OK syncdev aborted successfully"
+    return 0
+  fi
+
   local current
   current=$(git branch --show-current)
 
-  # Ensure clean working tree
   if ! git diff --quiet || ! git diff --cached --quiet; then
     echo -e "$ERR Working tree is dirty"
     echo -e "$INFO Commit or stash your changes first"
@@ -481,6 +489,7 @@ syncdev() {
 
   echo -e "$OK dev is now in sync with origin/main"
   echo -e "$INFO Backup tag created: $backup_tag"
+  echo -e "$INFO Use 'syncdev --abort' to restore this state"
 }
 
 ## Delete merged child branches of current branch
