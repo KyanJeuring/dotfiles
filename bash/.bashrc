@@ -230,7 +230,18 @@ gfp() {
 
 ## Undo last commit (soft)
 gus() {
-  git reset --soft HEAD~1
+  local branch
+  branch=$(git branch --show-current)
+
+  if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    [[ "$branch" == "main" ]] &&
+      echo -e "$WARN Undoing commit on main (local only)"
+  else
+    echo -e "$ERR No commit to undo"
+    return 1
+  fi
+
+  git reset --soft HEAD~1 &&
   echo -e "$OK Last commit undone (soft)"
 }
 
@@ -244,27 +255,50 @@ gurs() {
     return 1
   }
 
+  if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    echo -e "$ERR No commit to undo"
+    return 1
+  fi
+
   if [[ "$branch" == "main" ]]; then
     echo -e "$WARN You are about to rewrite history on MAIN"
     echo -e "$WARN This affects everyone pulling from main"
     read -rp "Type 'MAIN' to continue: " ans
     [[ "$ans" == "MAIN" ]] || return 1
-
   fi
 
   echo -e "$INFO Reverting last commit on '$branch' (soft)"
   git reset --soft HEAD~1 &&
-  git push --force-with-lease
+  git push --force-with-lease &&
   echo -e "$OK Last remote commit undone (soft)"
 }
 
-
 ## Undo last commit (hard)
 guh() {
-  echo -e "$WARN This will discard all changes from the last commit"
+  local branch commit
+  branch=$(git branch --show-current)
+
+  if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    echo -e "$ERR No commit to undo"
+    return 1
+  fi
+
+  commit=$(git log -1 --oneline)
+
+  if [[ "$branch" == "main" ]]; then
+    echo -e "$WARN You are about to HARD-reset the last commit on MAIN"
+  else
+    echo -e "$WARN You are about to HARD-reset the last commit on '$branch'"
+  fi
+
+  echo -e "$WARN Commit to be removed:"
+  echo "  $commit"
+  echo -e "$WARN This will DISCARD all changes from that commit"
+
   confirm "Continue?" || return 1
 
-  git reset --hard HEAD~1
+  git reset --hard HEAD~1 &&
+  echo -e "$OK Last commit discarded (hard reset)"
 }
 
 ## Undo last remote commit (hard)
@@ -289,9 +323,9 @@ gurh() {
   fi
 
   git reset --hard HEAD~1 &&
-  git push --force-with-lease
+  git push --force-with-lease &&
+  echo -e "$OK Last remote commit discarded (hard)"
 }
-
 
 ## Sync dev with main
 gsync() {
