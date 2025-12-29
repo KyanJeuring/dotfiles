@@ -1,6 +1,6 @@
-# --------------------------------------------------
+# ==================================================
 # Output formatting (safe + portable)
-# --------------------------------------------------
+# ==================================================
 
 if [[ -t 1 ]]; then
   RED='\033[0;31m'
@@ -17,16 +17,38 @@ ERR="${RED}[ERROR]${NC}"
 INFO="${BLUE}[INFO]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
 
-
-# --------------------------------------------------
+# ==================================================
 # Utility helpers
-# --------------------------------------------------
+# ==================================================
 
+## Show all aliases and documented functions
+bashrc() {
+  echo -e "$INFO Available aliases:"
+  alias | sed 's/^alias //' | sort
+
+  echo
+  echo -e "$INFO Available functions:"
+
+  awk '
+    /^## / {
+      desc = substr($0, 4)
+      getline
+      if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/) {
+        name = $0
+        sub(/\(\).*/, "", name)
+        printf "  %-22s %s\n", name, desc
+      }
+    }
+  ' "${BASH_SOURCE[0]}" | sort
+}
+
+## Ask for y/N confirmation
 confirm() {
   read -rp "$1 (y/N): " ans
   [[ "$ans" == "y" ]]
 }
 
+## Check availability of common dev tools
 envcheck() {
   for cmd in git docker docker-compose node npm; do
     if command -v "$cmd" >/dev/null; then
@@ -37,9 +59,9 @@ envcheck() {
   done
 }
 
-# --------------------------------------------------
+# ==================================================
 # Git aliases (abbreviations only)
-# --------------------------------------------------
+# ==================================================
 
 alias gs='git status'
 alias ga='git add .'
@@ -54,16 +76,17 @@ alias gsync='git switch dev && git pull origin main --rebase'
 alias gabort='git merge --abort'
 alias gdiffdeploy='git log main..dev --oneline --decorate'
 
-# --------------------------------------------------
-# Promote function (Promotes dev to main)
-# --------------------------------------------------
+# ==================================================
+# Promotion / release workflow
+# ==================================================
 
+## Promote dev → main and create a release tag
 promote() {
   set -uo pipefail
 
   LOCKDIR="/tmp/git-promote.lock"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    echo -e "$ERR Another promote is already running"
+    echo -e "$ERR Another promotion is already running"
     return 1
   fi
 
@@ -76,12 +99,10 @@ promote() {
     rmdir "$LOCKDIR" >/dev/null 2>&1 || true
   }
 
-  trap cleanup RETURN
   trap cleanup EXIT
-  trap 'echo -e "$ERR Deploy interrupted"; return 1' INT TERM
 
   if [[ "$original" != "dev" ]]; then
-    echo -e "$ERR Deploy must be run from dev (current: $original)"
+    echo -e "$ERR Must be run from dev (current: $original)"
     return 1
   fi
 
@@ -91,7 +112,7 @@ promote() {
   fi
 
   if [[ -z "$(git log main..dev --oneline)" ]]; then
-    echo -e "$INFO Nothing to deploy (dev == main)"
+    echo -e "$INFO Nothing to promote (dev == main)"
     return 0
   fi
 
@@ -108,24 +129,25 @@ promote() {
   git merge --no-ff dev || return 1
 
   echo -e "$INFO Pushing main"
-  if ! git push origin main; then
+  git push origin main || {
     echo -e "$ERR Push failed, rolling back local main"
     git reset --hard origin/main
     return 1
-  fi
+  }
 
-  echo -e "$INFO Tagging deploy"
-  tag="deploy-$(date +%Y%m%d-%H%M%S)"
-  git tag -a "$tag" -m "Production deploy" || return 1
+  tag="release-$(date +%Y%m%d-%H%M%S)"
+  echo -e "$INFO Tagging release ($tag)"
+  git tag -a "$tag" -m "Release" || return 1
   git push origin "$tag" || return 1
 
-  echo -e "$OK Deploy successful ($tag)"
+  echo -e "$OK Promotion successful ($tag)"
 }
 
-# --------------------------------------------------
+# ==================================================
 # Git workflow helpers
-# --------------------------------------------------
+# ==================================================
 
+## Switch to branch, pull latest, show status
 workon() {
   echo -e "$INFO Switching to branch '$1'"
   git switch "$1" || return 1
@@ -133,6 +155,7 @@ workon() {
   git status
 }
 
+## Force dev to match origin/main (destructive)
 syncdev() {
   local current
   current=$(git branch --show-current)
@@ -146,21 +169,19 @@ syncdev() {
   echo -e "$OK dev is now in sync with main"
 }
 
+## Delete merged child branches of current branch
 cleanupbranches() {
   local current
   current=$(git branch --show-current)
 
-  echo -e "$INFO Cleaning up branches merged into '$current' and branched from it"
+  echo -e "$INFO Cleaning up merged branches of '$current'"
 
   git branch --merged | while read -r branch; do
-    # Skip current branch, main, dev
     [[ "$branch" == "*"* ]] && continue
     [[ "$branch" == "$current" ]] && continue
     [[ "$branch" == "main" || "$branch" == "dev" ]] && continue
 
-    # Check if branch was created from current branch
     base=$(git merge-base "$current" "$branch")
-
     if [[ "$base" == "$(git rev-parse "$current")" ]]; then
       echo -e "$INFO Deleting branch '$branch'"
       git branch -d "$branch"
@@ -170,16 +191,17 @@ cleanupbranches() {
   echo -e "$OK Branch cleanup complete"
 }
 
-
+## Show commits that would be promoted
 whatwilldeploy() {
-  echo -e "$INFO Commits that will be deployed:"
+  echo -e "$INFO Commits that will be promoted:"
   git log main..dev --oneline --decorate
 }
 
-# --------------------------------------------------
-# Docker / infrastructure workflows
-# --------------------------------------------------
+# ==================================================
+# Docker workflows
+# ==================================================
 
+## Restart docker compose stack
 rebootstack() {
   echo -e "$INFO Restarting docker stack"
   docker compose down || return 1
@@ -187,6 +209,7 @@ rebootstack() {
   echo -e "$OK Stack restarted"
 }
 
+## Fully reset docker stack (destructive)
 resetstack() {
   echo -e "$WARN This will remove containers, networks, and volumes"
   confirm "Continue?" || return 1
@@ -196,9 +219,9 @@ resetstack() {
   echo -e "$OK Docker stack fully reset"
 }
 
-# --------------------------------------------------
+# ==================================================
 # Docker aliases (abbreviations)
-# --------------------------------------------------
+# ==================================================
 
 alias dstart='docker compose start'
 alias dstop='docker compose stop'
