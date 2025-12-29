@@ -18,28 +18,98 @@ INFO="${BLUE}[INFO]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
 
 # ==================================================
+# Git aliases
+# ==================================================
+
+alias gs='git status'
+alias ga='git add .'
+alias gr='git restore .'
+alias gpr='git pull --rebase'
+alias gl='git log --oneline --graph --all --decorate'
+alias gfp='git fetch -p'
+alias gus='git reset --soft HEAD~1'
+alias guh='git reset --hard HEAD~1'
+alias gsync='git switch dev && git pull origin main --rebase'
+alias gabort='git merge --abort'
+alias gdiffdeploy='git log main..dev --oneline --decorate'
+
+# ==================================================
+# Docker aliases
+# ==================================================
+
+alias dstart='docker compose start'
+alias dstop='docker compose stop'
+alias dcompose='docker compose up -d --build --remove-orphans'
+alias ddown='docker compose down -v'
+alias drestart='docker compose down && docker compose up -d'
+alias dstopall='docker ps -aq | xargs -r docker stop'
+alias drecompose='docker compose down -v && docker compose up -d'
+
+# ==================================================
 # Utility helpers
 # ==================================================
 
-## Show all aliases and documented functions
+## Show an overview of aliases and functions
 bashrc() {
-  echo -e "$INFO Available aliases:"
-  alias | sed 's/^alias //' | sort
-
+  echo -e "$INFO Aliases"
   echo
-  echo -e "$INFO Available functions:"
 
   awk '
+    # Detect real section headers (ignore separators and ## docs)
+    /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
+      section = substr($0, 3)
+      next
+    }
+
+    /^alias / && section != "" {
+      sub(/^alias /, "", $0)
+      printf "[%s]\n%s\n", section, $0
+    }
+  ' "${BASH_SOURCE[0]}" |
+  awk '
+    /^\[/ {
+      if ($0 != last) {
+        if (NR > 1) print ""
+        print $0
+        last = $0
+      }
+      next
+    }
+    { print "  " $0 }
+  '
+
+  echo
+  echo -e "$INFO Functions"
+  echo
+
+  awk '
+    # Detect real section headers (ignore separators and ## docs)
+    /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
+      section = substr($0, 3)
+      next
+    }
+
     /^## / {
       desc = substr($0, 4)
       getline
       if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/) {
         name = $0
         sub(/\(\).*/, "", name)
-        printf "  %-22s %s\n", name, desc
+        printf "[%s]\n%-22s %s\n", section, name, desc
       }
     }
-  ' "${BASH_SOURCE[0]}" | sort
+  ' "${BASH_SOURCE[0]}" |
+  awk '
+    /^\[/ {
+      if ($0 != last) {
+        if (NR > 1) print ""
+        print $0
+        last = $0
+      }
+      next
+    }
+    { print "  " $0 }
+  '
 }
 
 ## Ask for y/N confirmation
@@ -60,25 +130,58 @@ envcheck() {
 }
 
 # ==================================================
-# Git aliases (abbreviations only)
+# Git workflow helpers
 # ==================================================
 
-alias gs='git status'
-alias ga='git add .'
-alias gr='git restore .'
-alias gpr='git pull --rebase'
-alias gl='git log --oneline --graph --all --decorate'
-alias gfp='git fetch -p'
-alias gus='git reset --soft HEAD~1'
-alias guh='git reset --hard HEAD~1'
+## Switch to branch, pull latest, show status
+workon() {
+  echo -e "$INFO Switching to branch '$1'"
+  git switch "$1" || return 1
+  git pull || return 1
+  git status
+}
 
-alias gsync='git switch dev && git pull origin main --rebase'
-alias gabort='git merge --abort'
-alias gdiffdeploy='git log main..dev --oneline --decorate'
+## Force dev to match origin/main (destructive)
+syncdev() {
+  local current
+  current=$(git branch --show-current)
 
-# ==================================================
-# Promotion / release workflow
-# ==================================================
+  echo -e "$INFO Syncing dev with origin/main"
+  git switch dev || return 1
+  git fetch origin || return 1
+  git reset --hard origin/main || return 1
+
+  [[ "$current" != "dev" ]] && git switch "$current"
+  echo -e "$OK dev is now in sync with main"
+}
+
+## Delete merged child branches of current branch
+cleanupbranches() {
+  local current
+  current=$(git branch --show-current)
+
+  echo -e "$INFO Cleaning up merged branches of '$current'"
+
+  git branch --merged | while read -r branch; do
+    [[ "$branch" == "*"* ]] && continue
+    [[ "$branch" == "$current" ]] && continue
+    [[ "$branch" == "main" || "$branch" == "dev" ]] && continue
+
+    base=$(git merge-base "$current" "$branch")
+    if [[ "$base" == "$(git rev-parse "$current")" ]]; then
+      echo -e "$INFO Deleting branch '$branch'"
+      git branch -d "$branch"
+    fi
+  done
+
+  echo -e "$OK Branch cleanup complete"
+}
+
+## Show commits that would be promoted
+whatwilldeploy() {
+  echo -e "$INFO Commits that would be promoted:"
+  git log main..dev --oneline --decorate
+}
 
 ## Promote dev → main and create a release tag
 promote() {
@@ -144,60 +247,6 @@ promote() {
 }
 
 # ==================================================
-# Git workflow helpers
-# ==================================================
-
-## Switch to branch, pull latest, show status
-workon() {
-  echo -e "$INFO Switching to branch '$1'"
-  git switch "$1" || return 1
-  git pull || return 1
-  git status
-}
-
-## Force dev to match origin/main (destructive)
-syncdev() {
-  local current
-  current=$(git branch --show-current)
-
-  echo -e "$INFO Syncing dev with origin/main"
-  git switch dev || return 1
-  git fetch origin || return 1
-  git reset --hard origin/main || return 1
-
-  [[ "$current" != "dev" ]] && git switch "$current"
-  echo -e "$OK dev is now in sync with main"
-}
-
-## Delete merged child branches of current branch
-cleanupbranches() {
-  local current
-  current=$(git branch --show-current)
-
-  echo -e "$INFO Cleaning up merged branches of '$current'"
-
-  git branch --merged | while read -r branch; do
-    [[ "$branch" == "*"* ]] && continue
-    [[ "$branch" == "$current" ]] && continue
-    [[ "$branch" == "main" || "$branch" == "dev" ]] && continue
-
-    base=$(git merge-base "$current" "$branch")
-    if [[ "$base" == "$(git rev-parse "$current")" ]]; then
-      echo -e "$INFO Deleting branch '$branch'"
-      git branch -d "$branch"
-    fi
-  done
-
-  echo -e "$OK Branch cleanup complete"
-}
-
-## Show commits that would be promoted
-whatwilldeploy() {
-  echo -e "$INFO Commits that will be promoted:"
-  git log main..dev --oneline --decorate
-}
-
-# ==================================================
 # Docker workflows
 # ==================================================
 
@@ -218,15 +267,3 @@ resetstack() {
   docker system prune -f
   echo -e "$OK Docker stack fully reset"
 }
-
-# ==================================================
-# Docker aliases (abbreviations)
-# ==================================================
-
-alias dstart='docker compose start'
-alias dstop='docker compose stop'
-alias dcompose='docker compose up -d --build --remove-orphans'
-alias ddown='docker compose down -v'
-alias drestart='docker compose down && docker compose up -d'
-alias dstopall='docker ps -aq | xargs -r docker stop'
-alias drecompose='docker compose down -v && docker compose up -d'
