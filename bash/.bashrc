@@ -55,15 +55,15 @@ alias gabort='git merge --abort'
 alias gdiffdeploy='git log main..dev --oneline --decorate'
 
 # --------------------------------------------------
-# Deploy function
+# Promote function (Promotes dev to main)
 # --------------------------------------------------
 
-deploy() {
+promote() {
   set -uo pipefail
 
-  LOCKDIR="/tmp/git-deploy.lock"
+  LOCKDIR="/tmp/git-promote.lock"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    echo -e "$ERR Another deploy is already running"
+    echo -e "$ERR Another promote is already running"
     return 1
   fi
 
