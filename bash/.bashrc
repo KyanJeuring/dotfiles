@@ -62,7 +62,7 @@ confirm() {
 }
 
 # ==================================================
-# File & search commands (cross-platform)
+# File search & inspection (cross-platform)
 # ==================================================
 
 ## Find files by name (case-insensitive)
@@ -71,7 +71,6 @@ ff() {
     echo -e "$ERR Usage: ff <pattern>"
     return 1
   }
-
   find . -iname "*$1*" 2>/dev/null
 }
 
@@ -97,10 +96,48 @@ dus() {
   } | sort -h
 }
 
+## Show largest files (top 20)
+bigfiles() {
+  find . -type f -printf '%s\t%p\n' 2>/dev/null |
+  sort -nr | head -n 20 |
+  awk '{ printf "%8.1f MB  %s\n", $1/1024/1024, $2 }'
+}
+
+## Count files by extension
+countfiles() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: countfiles <ext>"
+    return 1
+  }
+  find . -type f -name "*.$1" | wc -l
+}
+
 ## Count lines of code
 loc() {
   find . -type f ! -path "./.git/*" -exec wc -l {} + | tail -n 1
 }
+
+# ==================================================
+# File access & editing (cross-platform)
+# ==================================================
+
+## Open file in default editor
+edit() {
+  "${EDITOR:-vi}" "$@"
+}
+
+## Print / view file safely (pager-aware)
+catp() {
+  if [ -t 1 ]; then
+    cat "$@" | less
+  else
+    cat "$@"
+  fi
+}
+
+# ==================================================
+# File mutation & safety (cross-platform)
+# ==================================================
 
 ## Backup a file or directory
 bu() {
@@ -113,6 +150,25 @@ bu() {
   echo -e "$OK Backup created"
 }
 
+## Remove files/directories safely
+rmf() {
+  [[ -z "$1" ]] && {
+    echo -e "$ERR Usage: rmf <file|dir>"
+    return 1
+  }
+
+  echo -e "$WARN This will permanently delete:"
+  printf "  %s\n" "$@"
+  confirm "Continue?" || return 1
+
+  rm -rf "$@"
+  echo -e "$OK Removed"
+}
+
+# ==================================================
+# File permissions (cross-platform)
+# ==================================================
+
 ## Make executable
 x() {
   chmod +x "$@"
@@ -123,12 +179,8 @@ x() {
 # Navigation commands (cross-platform)
 # ==================================================
 
-## Go to home directory
-home() {
-  cd "$HOME" || return 1
-}
+home() { cd "$HOME" || return 1; }
 
-## Go up N directories (default: 1)
 up() {
   local levels="${1:-1}"
   local path="."
@@ -145,7 +197,6 @@ up() {
   cd "$path" || return 1
 }
 
-## Create directory and enter it
 mkcd() {
   [[ -z "$1" ]] && {
     echo -e "$ERR No directory specified"
@@ -155,19 +206,14 @@ mkcd() {
   mkdir -p "$1" && cd "$1" || return 1
 }
 
-## Go to previous directory
-back() {
-  cd - >/dev/null || return 1
-}
+back() { cd - >/dev/null || return 1; }
 
-## Jump to git repository root
 root() {
   local r
   r=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo -e "$ERR Not inside a git repository"
     return 1
   }
-
   cd "$r" || return 1
 }
 
