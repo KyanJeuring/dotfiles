@@ -216,6 +216,7 @@ gs() {
 ## Stage all changes
 ga() {
   git add .
+  echo -e "$OK All changes staged"
 }
 
 ## Restore changes
@@ -263,19 +264,33 @@ gfp() {
 
 ## Undo last commit (soft)
 gus() {
-  local branch
-  branch=$(git branch --show-current)
+  if [[ "$1" == "--abort" ]]; then
+    if ! git rev-parse ORIG_HEAD >/dev/null 2>&1; then
+      echo -e "$ERR No gus operation to abort"
+      return 1
+    fi
 
-  if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-    [[ "$branch" == "main" ]] &&
-      echo -e "$WARN Undoing commit on main (local only)"
-  else
-    echo -e "$ERR No commit to undo"
+    echo -e "$INFO Aborting gus (restoring previous HEAD)"
+    git reset --hard ORIG_HEAD &&
+    echo -e "$OK gus aborted"
+    return 0
+  fi
+
+  local commit_count
+  if ! git rev-parse HEAD >/dev/null 2>&1; then
+    echo -e "$ERR Repository has no commits"
     return 1
+  fi
+
+  commit_count=$(git rev-list --count HEAD)
+  if (( commit_count < 2 )); then
+    echo -e "$INFO Nothing to undo"
+    return 0
   fi
 
   git reset --soft HEAD~1 &&
   echo -e "$OK Last commit undone (soft)"
+  echo -e "$INFO Use 'gus --abort' to restore previous HEAD if needed"
 }
 
 ## Undo last remote commit (soft)
@@ -313,30 +328,36 @@ gurs() {
 
 ## Undo last commit (hard)
 guh() {
-  local branch commit
-  branch=$(git branch --show-current)
+  if [[ "$1" == "--abort" ]]; then
+    if ! git rev-parse ORIG_HEAD >/dev/null 2>&1; then
+      echo -e "$ERR No guh operation to abort"
+      return 1
+    fi
 
-  if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-    echo -e "$ERR No commit to undo"
+    echo -e "$WARN guh --abort only works immediately after guh"
+    git reset --hard ORIG_HEAD &&
+    echo -e "$OK guh aborted"
+    return 0
+  fi
+
+  local commit_count
+  if ! git rev-parse HEAD >/dev/null 2>&1; then
+    echo -e "$ERR Repository has no commits"
     return 1
   fi
 
-  commit=$(git log -1 --oneline)
-
-  if [[ "$branch" == "main" ]]; then
-    echo -e "$WARN You are about to HARD-reset the last commit on MAIN"
-  else
-    echo -e "$WARN You are about to HARD-reset the last commit on '$branch'"
+  commit_count=$(git rev-list --count HEAD)
+  if (( commit_count < 2 )); then
+    echo -e "$INFO Nothing to discard"
+    return 0
   fi
 
-  echo -e "$WARN Commit to be removed:"
-  echo "  $commit"
-  echo -e "$WARN This will DISCARD all changes from that commit"
-
+  echo -e "$WARN This will permanently discard the last commit"
   confirm "Continue?" || return 1
 
   git reset --hard HEAD~1 &&
-  echo -e "$OK Last commit discarded (hard reset)"
+  echo -e "$OK Last commit discarded (hard)"
+  echo -e "$INFO Use 'guh --abort' to restore previous HEAD if needed"
 }
 
 ## Undo last remote commit (hard)
