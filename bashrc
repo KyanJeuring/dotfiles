@@ -76,8 +76,8 @@ bashrc() {
   '
 }
 
-## Update bashrc from dotfiles repository
-bashrc-update() {
+## Update dotfiles repository and reload bashrc
+dotfiles-update() {
   local bashrc_link bashrc_real repo_dir
 
   bashrc_link="${BASH_SOURCE[0]}"
@@ -91,7 +91,7 @@ bashrc-update() {
     return 1
   fi
 
-  echo -e "$INFO Updating bashrc from dotfiles repo"
+  echo -e "$INFO Updating dotfiles repository"
   echo -e "$INFO Repo: $repo_dir"
 
   (
@@ -106,7 +106,7 @@ bashrc-update() {
   # shellcheck disable=SC1090
   source "$bashrc_link"
 
-  echo -e "$OK bashrc updated and reloaded"
+  echo -e "$OK Dotfiles updated and bashrc reloaded"
 }
 
 confirm() {
