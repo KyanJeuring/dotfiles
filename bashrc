@@ -1004,6 +1004,7 @@ promote() {
   original=$(git branch --show-current)
 
   cleanup() {
+    git rebase --abort >/dev/null 2>&1 || true
     git merge --abort >/dev/null 2>&1 || true
     git switch "$original" >/dev/null 2>&1 || \
       echo -e "$WARN Manual switch to $original required"
@@ -1024,9 +1025,21 @@ promote() {
     return 1
   fi
 
-  if [[ -z "$(git log main..dev --oneline)" ]]; then
+  echo -e "$INFO Fetching latest refs"
+  git fetch origin || return 1
+
+  if [[ -z "$(git log origin/main..dev --oneline)" ]]; then
     echo -e "$INFO Nothing to deploy (dev == main)"
     return 0
+  fi
+
+  echo -e "$INFO Rebasing dev onto origin/dev"
+  if ! git rebase origin/dev; then
+    echo -e "$ERR Rebase failed — resolve conflicts on dev"
+    echo -e "$INFO After resolving:"
+    echo -e "$INFO   git rebase --continue"
+    echo -e "$INFO   git push origin dev or promote"
+    return 1
   fi
 
   echo -e "$INFO Pushing dev"
@@ -1038,8 +1051,8 @@ promote() {
   echo -e "$INFO Pulling latest main"
   git pull origin main || return 1
 
-  echo -e "$INFO Merging dev → main"
-  git merge --no-ff dev || return 1
+  echo -e "$INFO Fast-forwarding main → dev"
+  git merge --ff-only dev || return 1
 
   echo -e "$INFO Pushing main"
   if ! git push origin main; then
