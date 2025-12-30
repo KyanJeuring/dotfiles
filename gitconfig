@@ -1,0 +1,91 @@
+# ==================================================
+# User identity
+# ==================================================
+[user]
+    name = Kyan Jeuring
+    email = kyanjeuring@gmail.com
+
+# ==================================================
+# Git LFS (required if you use LFS anywhere)
+# ==================================================
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+
+# ==================================================
+# Core behavior
+# ==================================================
+[core]
+    editor = vim
+    pager = less
+    autocrlf = input
+    whitespace = trailing-space,space-before-tab
+
+# ==================================================
+# Repository initialization
+# ==================================================
+[init]
+    defaultBranch = main
+
+# ==================================================
+# Pull / rebase behavior
+# ==================================================
+[pull]
+    rebase = true
+
+[rebase]
+    autoStash = true
+
+# ==================================================
+# Fetch hygiene
+# ==================================================
+[fetch]
+    prune = true
+    pruneTags = true
+
+# ==================================================
+# Push safety
+# ==================================================
+[push]
+    default = simple
+    autoSetupRemote = true
+
+# ==================================================
+# Status & log readability
+# ==================================================
+[status]
+    short = true
+    branch = true
+
+[log]
+    date = iso
+
+# ==================================================
+# Diff & merge behavior
+# ==================================================
+[diff]
+    colorMoved = default
+
+[merge]
+    conflictstyle = diff3
+
+# ==================================================
+# Conflict reuse (quality-of-life)
+# ==================================================
+[rerere]
+    enabled = true
+    autoupdate = false
+
+# ==================================================
+# Credential handling (cross-platform)
+# ==================================================
+[credential]
+    helper = manager-core
+
+# ==================================================
+# Color handling
+# ==================================================
+[color]
+    ui = auto
