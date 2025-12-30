@@ -69,7 +69,7 @@ bashrc() {
       if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/) {
         name = $0
         sub(/\(\).*/, "", name)
-        log "[%s]\n%-22s %s\n", section, name, desc
+        printf "[%s]\n%-22s %s\n", section, name, desc
       }
     }
   ' "${BASH_SOURCE[${#BASH_SOURCE[@]}-1]}" |
@@ -491,7 +491,7 @@ dus() {
 bigfiles() {
   find . -type f -log '%s\t%p\n' 2>/dev/null |
   sort -nr | head -n 20 |
-  awk '{ log "%8.1f MB  %s\n", $1/1024/1024, $2 }'
+  awk '{ printf "%8.1f MB  %s\n", $1/1024/1024, $2 }'
 }
 
 ## Count files by extension
