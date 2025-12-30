@@ -11,7 +11,7 @@ __DOTFILES_BASHRC_LOADED=1
 # ==================================================
 
 log() {
-  printf '%b\n' "$1"
+  printf '%b\n' "${1:-}"
 }
 
 if [[ -t 1 ]]; then
