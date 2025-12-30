@@ -10,6 +10,10 @@ __DOTFILES_BASHRC_LOADED=1
 # Output helpers (portable)
 # ==================================================
 
+log() {
+  printf '%b\n' "$1"
+}
+
 if [[ -t 1 ]]; then
   INFO="\033[0;34m\033[1m[INFO]\033[0m"
   OK="\033[0;32m\033[1m[OK]\033[0m"
@@ -21,6 +25,11 @@ else
   WARN="[WARN]"
   ERR="[ERROR]"
 fi
+
+info() { log "$INFO $*"; }
+ok()   { log "$OK $*"; }
+warn() { log "$WARN $*"; }
+err()  { log "$ERR $*"; }
 
 # ==================================================
 # Deprecated commands (single source of truth)
@@ -34,7 +43,7 @@ DEPRECATED_FUNCTIONS=(
 ### Remove deprecated functions automatically (warn once)
 for fn in "${DEPRECATED_FUNCTIONS[@]}"; do
   if declare -F "$fn" >/dev/null; then
-    echo -e "$WARN '$fn' is deprecated and has been removed"
+    warn "'$fn' is deprecated and has been removed"
     unset -f "$fn"
   fi
 done
@@ -45,8 +54,8 @@ done
 
 ## Show an overview of custom bash commands
 bashrc() {
-  echo -e "$INFO Custom bash commands"
-  echo
+  info "Custom bash commands"
+  log
 
   awk '
     /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
@@ -60,7 +69,7 @@ bashrc() {
       if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/) {
         name = $0
         sub(/\(\).*/, "", name)
-        printf "[%s]\n%-22s %s\n", section, name, desc
+        log "[%s]\n%-22s %s\n", section, name, desc
       }
     }
   ' "${BASH_SOURCE[${#BASH_SOURCE[@]}-1]}" |
@@ -88,26 +97,26 @@ dotfiles-update() {
     && git rev-parse --show-toplevel 2>/dev/null || true)"
 
   if [[ -z "$repo_dir" ]]; then
-    echo -e "$ERR Could not locate dotfiles git repository"
+    err "Could not locate dotfiles git repository"
     return 1
   fi
 
-  echo -e "$INFO Updating dotfiles repository"
-  echo -e "$INFO Repo: $repo_dir"
+  info "Updating dotfiles repository"
+  info "Repo: $repo_dir"
 
   (
     cd "$repo_dir"
     git pull --ff-only
   ) || {
-    echo -e "$ERR Git pull failed"
+    err "Git pull failed"
     return 1
   }
 
-  echo -e "$INFO Reloading bashrc"
+  info "Reloading bashrc"
   ### shellcheck disable=SC1090
   source "$bashrc_link"
 
-  echo -e "$OK Dotfiles updated and bashrc reloaded"
+  ok "Dotfiles updated and bashrc reloaded"
 }
 
 confirm() {
@@ -129,7 +138,7 @@ sysinfo() {
       _sysinfo_windows
       ;;
     *)
-      echo -e "$ERR Unsupported platform"
+      err "Unsupported platform"
       return 1
       ;;
   esac
@@ -137,8 +146,8 @@ sysinfo() {
 
 ### Linux implementation
 _sysinfo_linux() {
-  echo -e "$INFO System Information"
-  echo
+  info "System Information"
+  log
 
   if [[ -f /etc/os-release ]]; then
     . /etc/os-release
@@ -194,28 +203,27 @@ _sysinfo_linux() {
   terminal="${TERM_PROGRAM:-$TERM}"
   ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
 
-  printf "  OS:        %s\n" "$os"
-  printf "  Host:      %s\n" "$host"
-  printf "  Kernel:    %s\n" "$kernel"
-  printf "  Uptime:    %s\n" "$uptime_str"
-  printf "  Load:      %s\n" "$load"
-  printf "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
-  printf "  Memory:    %s / %s | %s%%\n" "$mem_used" "$mem_total" "$mem_pct"
-  printf "  Swap:      %s / %s | %s%%\n" "$swap_used" "$swap_total" "$swap_pct"
-  printf "  Disk (/):  %s / %s | %s\n" "$disk_used" "$disk_total" "$disk_pct"
-  printf "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
-  printf "  Display:   %s\n" "$display"
-  printf "  Terminal:  %s\n" "$terminal"
-  printf "  IP:        %s\n" "${ip:-N/A}"
-
-  echo
-  echo -e "$OK Summary Complete"
+  log "  OS:        %s\n" "$os"
+  log "  Host:      %s\n" "$host"
+  log "  Kernel:    %s\n" "$kernel"
+  log "  Uptime:    %s\n" "$uptime_str"
+  log "  Load:      %s\n" "$load"
+  log "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
+  log "  Memory:    %s / %s | %s%%\n" "$mem_used" "$mem_total" "$mem_pct"
+  log "  Swap:      %s / %s | %s%%\n" "$swap_used" "$swap_total" "$swap_pct"
+  log "  Disk (/):  %s / %s | %s\n" "$disk_used" "$disk_total" "$disk_pct"
+  log "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
+  log "  Display:   %s\n" "$display"
+  log "  Terminal:  %s\n" "$terminal"
+  log "  IP:        %s\n" "${ip:-N/A}"
+  log
+  ok "Summary Complete"
 }
 
 ### Windows implementation
 _sysinfo_windows() {
-  echo -e "$INFO System Information"
-  echo
+  info "System Information"
+  log
 
   ps() {
     powershell.exe -NoProfile -Command "$1" | tr -d '\r'
@@ -246,9 +254,9 @@ _sysinfo_windows() {
     "{0} {1} {2}" -f $d.Size, ($d.Size - $d.FreeSpace), ([math]::Round(100*($d.Size-$d.FreeSpace)/$d.Size))
   ')
 
-  disk_total=$(echo "$disk_info" | awk '{print $1}')
-  disk_used=$(echo "$disk_info" | awk '{print $2}')
-  disk_pct=$(echo "$disk_info" | awk '{print $3}%')
+  disk_total=$(log "$disk_info" | awk '{print $1}')
+  disk_used=$(log "$disk_info" | awk '{print $2}')
+  disk_pct=$(log "$disk_info" | awk '{print $3}%')
 
   disk_used_h=$(numfmt --to=iec --suffix=B "$disk_used")
   disk_total_h=$(numfmt --to=iec --suffix=B "$disk_total")
@@ -259,22 +267,22 @@ _sysinfo_windows() {
   terminal="${TERM_PROGRAM:-$TERM}"
   ip=$(ipconfig | awk '/IPv4 Address/ {print $NF; exit}')
 
-  printf "  OS:        %s\n" "$os"
-  printf "  Host:      %s\n" "$host"
-  printf "  Kernel:    %s\n" "$kernel"
-  printf "  Uptime:    %s\n" "$uptime_str"
-  printf "  Load:      N/A\n"
-  printf "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
-  printf "  Memory:    %s / %s | %s%%\n" "$mem_used_h" "$mem_total_h" "$mem_pct"
-  printf "  Swap:      N/A\n"
-  printf "  Disk (/):  %s / %s | %s\n" "$disk_used_h" "$disk_total_h" "$disk_pct"
-  printf "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
-  printf "  Display:   N/A\n"
-  printf "  Terminal:  %s\n" "$terminal"
-  printf "  IP:        %s\n" "$ip"
+  log "  OS:        %s\n" "$os"
+  log "  Host:      %s\n" "$host"
+  log "  Kernel:    %s\n" "$kernel"
+  log "  Uptime:    %s\n" "$uptime_str"
+  log "  Load:      N/A\n"
+  log "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
+  log "  Memory:    %s / %s | %s%%\n" "$mem_used_h" "$mem_total_h" "$mem_pct"
+  log "  Swap:      N/A\n"
+  log "  Disk (/):  %s / %s | %s\n" "$disk_used_h" "$disk_total_h" "$disk_pct"
+  log "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
+  log "  Display:   N/A\n"
+  log "  Terminal:  %s\n" "$terminal"
+  log "  IP:        %s\n" "$ip"
 
-  echo
-  echo -e "$OK Summary Complete"
+  log
+  ok "Summary Complete"
 }
 
 # ==================================================
@@ -318,7 +326,7 @@ psmem() {
 ## Find process by name
 psfind() {
   [[ -z "$1" ]] && {
-    echo "Usage: psfind <name>"
+    log "Usage: psfind <name>"
     return 1
   }
 
@@ -379,7 +387,7 @@ usb() {
 ## Show numeric permissions of a file
 perm() {
   [[ -z "$1" ]] && {
-    echo "Usage: perm <file>"
+    log "Usage: perm <file>"
     return 1
   }
 
@@ -412,12 +420,12 @@ osinfo() {
 ## Update system packages (distro-aware)
 sysupdate() {
   [[ ! -f /etc/os-release ]] && {
-    echo -e "$ERR Cannot detect distro (missing /etc/os-release)"
+    err "Cannot detect distro (missing /etc/os-release)"
     return 1
   }
 
   . /etc/os-release
-  echo -e "$INFO Detected distro: $NAME"
+  info "Detected distro: $NAME"
 
   case "$ID" in
     ubuntu|debian|linuxmint|pop)
@@ -436,12 +444,12 @@ sysupdate() {
       sudo apk update && sudo apk upgrade
       ;;
     *)
-      echo -e "$ERR Unsupported distro: $ID"
+      err "Unsupported distro: $ID"
       return 1
       ;;
   esac
 
-  echo -e "$OK System update complete"
+  ok "System update complete"
 }
 
 # ==================================================
@@ -451,7 +459,7 @@ sysupdate() {
 ## Find files by name (case-insensitive)
 ff() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: ff <pattern>"
+    err "Usage: ff <pattern>"
     return 1
   }
   find . -iname "*$1*" 2>/dev/null
@@ -460,7 +468,7 @@ ff() {
 ## Search text in files (fallback-safe)
 grepall() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: grepall <text>"
+    err "Usage: grepall <text>"
     return 1
   }
 
@@ -481,15 +489,15 @@ dus() {
 
 ## Show largest files (top 20)
 bigfiles() {
-  find . -type f -printf '%s\t%p\n' 2>/dev/null |
+  find . -type f -log '%s\t%p\n' 2>/dev/null |
   sort -nr | head -n 20 |
-  awk '{ printf "%8.1f MB  %s\n", $1/1024/1024, $2 }'
+  awk '{ log "%8.1f MB  %s\n", $1/1024/1024, $2 }'
 }
 
 ## Count files by extension
 countfiles() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: countfiles <ext>"
+    err "Usage: countfiles <ext>"
     return 1
   }
   find . -type f -name "*.$1" | wc -l
@@ -525,27 +533,27 @@ catp() {
 ## Backup a file or directory
 bu() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: bu <file|dir>"
+    err "Usage: bu <file|dir>"
     return 1
   }
 
   cp -r "$1" "$1.back-up.$(date +%Y%m%d-%H%M%S)"
-  echo -e "$OK Backup created"
+  ok "Backup created"
 }
 
 ## Remove files/directories safely
 rmf() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: rmf <file|dir>"
+    err "Usage: rmf <file|dir>"
     return 1
   }
 
-  echo -e "$WARN This will permanently delete:"
-  printf "  %s\n" "$@"
+  warn "This will permanently delete:"
+  log "  %s\n" "$@"
   confirm "Continue?" || return 1
 
   rm -rf "$@"
-  echo -e "$OK Removed"
+  ok "Removed"
 }
 
 # ==================================================
@@ -555,7 +563,7 @@ rmf() {
 ## Make executable
 x() {
   chmod +x "$@"
-  echo -e "$OK Made executable: $*"
+  ok "Made executable: $*"
 }
 
 # ==================================================
@@ -569,7 +577,7 @@ up() {
   local path="."
 
   [[ ! "$levels" =~ ^[0-9]+$ ]] && {
-    echo -e "$ERR Argument must be a number"
+    err "Argument must be a number"
     return 1
   }
 
@@ -582,7 +590,7 @@ up() {
 
 mkcd() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR No directory specified"
+    err "No directory specified"
     return 1
   }
 
@@ -594,7 +602,7 @@ back() { cd - >/dev/null || return 1; }
 root() {
   local r
   r=$(git rev-parse --show-toplevel 2>/dev/null) || {
-    echo -e "$ERR Not inside a git repository"
+    err "Not inside a git repository"
     return 1
   }
   cd "$r" || return 1
@@ -615,16 +623,16 @@ _guard_main_rewrite() {
 
   [[ "$branch" != "main" ]] && return 0
 
-  echo -e "$WARN You are on MAIN and about to rewrite history"
-  [[ -n "$upstream" ]] && echo -e "$WARN Upstream: $upstream"
+  warn "You are on MAIN and about to rewrite history"
+  [[ -n "$upstream" ]] && warn "Upstream: $upstream"
 
   if [[ -n "$upstream" && "$upstream" != */main ]]; then
-    echo -e "$WARN NOTE: upstream does not look like main (it is '$upstream')"
+    warn "NOTE: upstream does not look like main (it is '$upstream')"
   fi
 
-  echo -e "$WARN Commit to be removed: $commit_hash  $commit_msg"
-  echo -e "$WARN This affects everyone pulling from main."
-  echo
+  warn "Commit to be removed: $commit_hash  $commit_msg"
+  warn "This affects everyone pulling from main."
+  log
 
   read -rp "Type 'MAIN $commit_hash' to continue: " ans
   [[ "$ans" == "MAIN $commit_hash" ]]
@@ -632,12 +640,12 @@ _guard_main_rewrite() {
 
 _abort_reset() {
   git rev-parse ORIG_HEAD >/dev/null 2>&1 || {
-    echo -e "$ERR No reset to abort"
+    err "No reset to abort"
     return 1
   }
 
   git reset --hard ORIG_HEAD &&
-  echo -e "$OK Operation aborted"
+  ok "Operation aborted"
 }
 
 # ==================================================
@@ -658,7 +666,7 @@ gclone() {
       user="$2"
       ;;
     *)
-      echo -e "$ERR Usage: gclone <repo> [username]"
+      err "Usage: gclone <repo> [username]"
       return 1
       ;;
   esac
@@ -666,24 +674,24 @@ gclone() {
   target="$repo"
 
   if [[ ! "$repo" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-    echo -e "$ERR Invalid repository name: '$repo'"
+    err "Invalid repository name: '$repo'"
     return 1
   fi
 
   if [[ ! "$user" =~ ^[a-zA-Z0-9-]+$ ]]; then
-    echo -e "$ERR Invalid username: '$user'"
+    err "Invalid username: '$user'"
     return 1
   fi
 
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     local root
     root=$(git rev-parse --show-toplevel 2>/dev/null)
-    echo -e "$ERR Cannot clone inside an existing Git repository"
+    err "Cannot clone inside an existing Git repository"
     return 1
   fi
 
   if [[ -e "$target" ]]; then
-    echo -e "$WARN Repository already cloned: $target"
+    warn "Repository already cloned: $target"
     return 1
   fi
 
@@ -695,17 +703,17 @@ gclone() {
 
   url="git@github.com:$user/$repo.git"
 
-  echo -e "$INFO Checking repository access"
+  info "Checking repository access"
   if ! git ls-remote "$url" >/dev/null 2>&1; then
-    echo -e "$ERR Repository not found or access denied"
+    err "Repository not found or access denied"
     return 1
   fi
 
-  echo -e "$INFO Cloning $user/$repo (SSH)"
+  info "Cloning $user/$repo (SSH)"
   if git clone "$url"; then
-    echo -e "$OK Clone complete"
+    ok "Clone complete"
   else
-    echo -e "$ERR Clone failed"
+    err "Clone failed"
     return 1
   fi
 }
@@ -731,7 +739,7 @@ gdiffpromote() {
 
 ## Show commits that would be promoted
 whatwillpromote() {
-  echo -e "$INFO Commits that would be promoted:"
+  info "Commits that would be promoted:"
   git log main..dev --oneline --decorate
 }
 
@@ -742,51 +750,51 @@ whatwillpromote() {
 ## Stage all changes
 ga() {
   git add .
-  echo -e "$OK All changes staged"
+  ok "All changes staged"
 }
 
 ## Commit staged changes
 gc() {
   if git diff --quiet && git diff --cached --quiet; then
-    echo -e "$INFO Nothing to commit"
+    info "Nothing to commit"
     return 0
   fi
 
   ga || return 1
 
   if [[ $# -eq 0 ]]; then
-    git commit && echo -e "$OK Changes committed"
+    git commit && ok "Changes committed"
   else
-    git commit -m "$*" && echo -e "$OK Changes committed"
+    git commit -m "$*" && ok "Changes committed"
   fi
 }
 
 ## Restore unstaged changes
 gr() {
   if git diff --quiet; then
-    echo -e "$INFO No unstaged changes to restore"
+    info "No unstaged changes to restore"
     return 0
   fi
 
-  echo -e "$WARN This will discard ALL unstaged changes"
+  warn "This will discard ALL unstaged changes"
   confirm "Continue?" || return 1
 
   git restore .
-  echo -e "$OK Changes restored"
+  ok "Changes restored"
 }
 
 ## Restore staged changes
 grs() {
   if git diff --cached --quiet; then
-    echo -e "$INFO No staged changes to restore"
+    info "No staged changes to restore"
     return 0
   fi
 
-  echo -e "$WARN This will unstage ALL staged changes"
+  warn "This will unstage ALL staged changes"
   confirm "Continue?" || return 1
 
   git restore --staged .
-  echo -e "$OK Staged changes restored"
+  ok "Staged changes restored"
 }
 
 # ==================================================
@@ -817,44 +825,44 @@ gus() {
   [[ "$1" == "--abort" ]] && { _abort_reset; return $?; }
 
   git rev-parse HEAD >/dev/null 2>&1 || {
-    echo -e "$ERR Repository has no commits"
+    err "Repository has no commits"
     return 1
   }
 
   (( $(git rev-list --count HEAD) < 2 )) && {
-    echo -e "$INFO Nothing to undo"
+    info "Nothing to undo"
     return 0
   }
 
   git reset --soft HEAD~1 &&
-  echo -e "$OK Last commit undone (soft)"
-  echo -e "$INFO Use 'gus --abort' to restore previous HEAD if needed"
+  ok "Last commit undone (soft)"
+  info "Use 'gus --abort' to restore previous HEAD if needed"
 }
 
 ## Undo last commit (hard)
 guh() {
   [[ "$1" == "--abort" ]] && {
-    echo -e "$WARN guh --abort only works immediately after guh"
+    warn "guh --abort only works immediately after guh"
     _abort_reset
     return $?
   }
 
   git rev-parse HEAD >/dev/null 2>&1 || {
-    echo -e "$ERR Repository has no commits"
+    err "Repository has no commits"
     return 1
   }
 
   (( $(git rev-list --count HEAD) < 2 )) && {
-    echo -e "$INFO Nothing to discard"
+    info "Nothing to discard"
     return 0
   }
 
-  echo -e "$WARN This will permanently discard the last commit"
+  warn "This will permanently discard the last commit"
   confirm "Continue?" || return 1
 
   git reset --hard HEAD~1 &&
-  echo -e "$OK Last commit discarded (hard)"
-  echo -e "$INFO Use 'guh --abort' immediately to restore previous HEAD if needed"
+  ok "Last commit discarded (hard)"
+  info "Use 'guh --abort' immediately to restore previous HEAD if needed"
 }
 
 # ==================================================
@@ -867,22 +875,22 @@ gurs() {
   branch=$(git branch --show-current)
 
   [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
-    echo -e "$ERR No upstream branch set"
+    err "No upstream branch set"
     return 1
   }
 
   commit_count=$(git rev-list --count HEAD)
   (( commit_count < 2 )) && {
-    echo -e "$ERR Cannot remove the initial (root) commit"
+    err "Cannot remove the initial (root) commit"
     return 1
   }
 
   _guard_main_rewrite || return 1
 
-  echo -e "$INFO Removing latest commit on '$branch' (soft)"
+  info "Removing latest commit on '$branch' (soft)"
   git reset --soft HEAD~1 &&
   git push --force-with-lease &&
-  echo -e "$OK Latest commit removed (soft)"
+  ok "Latest commit removed (soft)"
 }
 
 ## Undo last remote commit (hard)
@@ -891,26 +899,26 @@ gurh() {
   branch=$(git branch --show-current)
 
   [[ -z "$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)" ]] && {
-    echo -e "$ERR No upstream branch set"
+    err "No upstream branch set"
     return 1
   }
 
   commit_count=$(git rev-list --count HEAD)
   (( commit_count < 2 )) && {
-    echo -e "$ERR Cannot remove the initial (root) commit"
+    err "Cannot remove the initial (root) commit"
     return 1
   }
 
   _guard_main_rewrite || return 1
 
   if [[ "$branch" != "main" ]]; then
-    echo -e "$WARN This will permanently remove the latest commit on '$branch'"
+    warn "This will permanently remove the latest commit on '$branch'"
     confirm "Continue?" || return 1
   fi
 
   git reset --hard HEAD~1 &&
   git push --force-with-lease &&
-  echo -e "$OK Latest commit permanently removed"
+  ok "Latest commit permanently removed"
 }
 
 # ==================================================
@@ -925,20 +933,20 @@ gsync() {
 ## Switch to branch, pull latest, show status
 workon() {
   [[ -z "$1" ]] && {
-    echo -e "$ERR Usage: workon <branch>"
+    err "Usage: workon <branch>"
     return 1
   }
 
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo -e "$ERR Working tree is dirty"
-    echo -e "$INFO Commit or stash your changes before switching branches"
+    err "Working tree is dirty"
+    info "Commit or stash your changes before switching branches"
     return 1
   fi
 
-  echo -e "$INFO Switching to branch '$1'"
+  info "Switching to branch '$1'"
   git switch "$1" || return 1
 
-  echo -e "$INFO Pulling latest changes"
+  info "Pulling latest changes"
   git pull || return 1
 
   git status
@@ -949,7 +957,7 @@ cleanupbranches() {
   local current
   current=$(git branch --show-current)
 
-  echo -e "$INFO Cleaning up merged branches of '$current'"
+  info "Cleaning up merged branches of '$current'"
 
   git branch --merged | while read -r branch; do
     [[ "$branch" == "*"* ]] && continue
@@ -958,12 +966,12 @@ cleanupbranches() {
 
     base=$(git merge-base "$current" "$branch")
     if [[ "$base" == "$(git rev-parse "$current")" ]]; then
-      echo -e "$INFO Deleting branch '$branch'"
+      info "Deleting branch '$branch'"
       git branch -d "$branch"
     fi
   done
 
-  echo -e "$OK Branch cleanup complete"
+  ok "Branch cleanup complete"
 }
 
 # ==================================================
@@ -977,17 +985,17 @@ syncdev() {
     tag=$(git tag --list 'backup-dev-*' --sort=-creatordate | head -n1)
 
     if [[ -z "$tag" ]]; then
-      echo -e "$ERR No backup tag found to abort syncdev"
+      err "No backup tag found to abort syncdev"
       return 1
     fi
 
-    echo -e "$INFO Aborting syncdev"
-    echo -e "$INFO Restoring dev from backup tag: $tag"
+    info "Aborting syncdev"
+    info "Restoring dev from backup tag: $tag"
 
     git switch dev >/dev/null 2>&1 || return 1
     git reset --hard "$tag" || return 1
 
-    echo -e "$OK syncdev aborted successfully"
+    ok "syncdev aborted successfully"
     return 0
   fi
 
@@ -995,46 +1003,46 @@ syncdev() {
   current=$(git branch --show-current)
 
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo -e "$ERR Working tree is dirty"
-    echo -e "$INFO Commit or stash your changes first"
+    err "Working tree is dirty"
+    info "Commit or stash your changes first"
     return 1
   fi
 
-  echo -e "$WARN This will RESET 'dev' to match 'origin/main'"
-  echo -e "$WARN ALL local commits on dev will be LOST"
+  warn "This will RESET 'dev' to match 'origin/main'"
+  warn "ALL local commits on dev will be LOST"
 
   if [[ -n "$(git log origin/main..dev --oneline 2>/dev/null)" ]]; then
-    echo
-    echo -e "$INFO Commits that will be removed:"
+    log
+    info "Commits that will be removed:"
     git log origin/main..dev --oneline --decorate
-    echo
+    log
   else
-    echo -e "$INFO No local-only commits on dev"
+    info "No local-only commits on dev"
   fi
 
   confirm "Continue?" || return 1
 
-  echo -e "$INFO Fetching origin"
+  info "Fetching origin"
   git fetch origin || return 1
 
-  echo -e "$INFO Switching to dev"
+  info "Switching to dev"
   git switch dev || return 1
 
   backup_tag="backup-dev-$(date +%Y%m%d-%H%M%S)"
-  echo -e "$INFO Creating backup tag: $backup_tag"
+  info "Creating backup tag: $backup_tag"
   git tag "$backup_tag" || return 1
 
-  echo -e "$INFO Resetting dev → origin/main"
+  info "Resetting dev → origin/main"
   git reset --hard origin/main || return 1
 
   if [[ "$current" != "dev" ]]; then
     git switch "$current" >/dev/null 2>&1 || \
-      echo -e "$WARN Manual switch back to '$current' required"
+      warn "Manual switch back to '$current' required"
   fi
 
-  echo -e "$OK dev is now in sync with origin/main"
-  echo -e "$INFO Backup tag created: $backup_tag"
-  echo -e "$INFO Use 'syncdev --abort' to restore this state"
+  ok "dev is now in sync with origin/main"
+  info "Backup tag created: $backup_tag"
+  info "Use 'syncdev --abort' to restore this state"
 }
 
 # ==================================================
@@ -1047,7 +1055,7 @@ promote() {
 
   LOCKDIR="/tmp/git-promote.lock"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    echo -e "$ERR Another promote is already running"
+    err "Another promote is already running"
     return 1
   fi
 
@@ -1057,66 +1065,66 @@ promote() {
     git rebase --abort >/dev/null 2>&1 || true
     git merge --abort >/dev/null 2>&1 || true
     git switch "$original" >/dev/null 2>&1 || \
-      echo -e "$WARN Manual switch to $original required"
+      warn "Manual switch to $original required"
     rmdir "$LOCKDIR" >/dev/null 2>&1 || true
   }
 
   trap cleanup RETURN
   trap cleanup EXIT
-  trap 'echo -e "$ERR Promote interrupted"; return 1' INT TERM
+  trap 'err "Promote interrupted"; return 1' INT TERM
 
   if [[ "$original" != "dev" ]]; then
-    echo -e "$ERR Promote must be run from dev (current: $original)"
+    err "Promote must be run from dev (current: $original)"
     return 1
   fi
 
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo -e "$ERR Working tree is dirty — commit or stash first"
+    err "Working tree is dirty — commit or stash first"
     return 1
   fi
 
-  echo -e "$INFO Fetching latest refs"
+  info "Fetching latest refs"
   git fetch origin || return 1
 
   if [[ -z "$(git log origin/main..dev --oneline)" ]]; then
-    echo -e "$INFO Nothing to promote (dev == main)"
+    info "Nothing to promote (dev == main)"
     return 0
   fi
 
-  echo -e "$INFO Rebasing dev onto origin/dev"
+  info "Rebasing dev onto origin/dev"
   if ! git rebase origin/dev; then
-    echo -e "$ERR Rebase failed — resolve conflicts on dev"
-    echo -e "$INFO After resolving:"
-    echo -e "$INFO   git rebase --continue"
-    echo -e "$INFO   git push origin dev or promote"
+    err "Rebase failed — resolve conflicts on dev"
+    info "After resolving:"
+    info "  git rebase --continue"
+    info "  git push origin dev or promote"
     return 1
   fi
 
-  echo -e "$INFO Pushing dev"
+  info "Pushing dev"
   git push origin dev || return 1
 
-  echo -e "$INFO Switching to main"
+  info "Switching to main"
   git switch main || return 1
 
-  echo -e "$INFO Pulling latest main"
+  info "Pulling latest main"
   git pull origin main || return 1
 
-  echo -e "$INFO Fast-forwarding main → dev"
+  info "Fast-forwarding main → dev"
   git merge --ff-only dev || return 1
 
-  echo -e "$INFO Pushing main"
+  info "Pushing main"
   if ! git push origin main; then
-    echo -e "$ERR Push failed, rolling back local main"
+    err "Push failed, rolling back local main"
     git reset --hard origin/main
     return 1
   fi
 
-  echo -e "$INFO Tagging promote"
+  info "Tagging promote"
   tag="promote-$(date +%Y%m%d-%H%M%S)"
   git tag -a "$tag" -m "Production promote" || return 1
   git push origin "$tag" || return 1
 
-  echo -e "$OK Promote successful ($tag)"
+  ok "Promote successful ($tag)"
 }
 
 # ==================================================
@@ -1165,20 +1173,20 @@ drecompose() {
 
 ## Restart docker compose stack (safe + verbose)
 drebootstack() {
-  echo -e "$INFO Restarting docker stack"
+  info "Restarting docker stack"
   docker compose down || return 1
   docker compose up -d || return 1
-  echo -e "$OK Stack restarted"
+  ok "Stack restarted"
 }
 
 ## Fully reset docker stack (destructive)
 dresetstack() {
-  echo -e "$WARN This will remove containers, networks, and volumes"
+  warn "This will remove containers, networks, and volumes"
   confirm "Continue?" || return 1
 
   docker compose down -v || return 1
   docker system prune -f
-  echo -e "$OK Docker stack fully reset"
+  ok "Docker stack fully reset"
 }
 
 # ==================================================
@@ -1254,7 +1262,7 @@ dcleani() {
 
 ## Full cleanup (destructive)
 dcleanall() {
-  echo -e "$WARN Removing unused containers, images, and networks"
+  warn "Removing unused containers, images, and networks"
   confirm "Continue?" || return 1
   docker system prune -a
 }

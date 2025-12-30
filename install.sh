@@ -5,6 +5,10 @@ set -euo pipefail
 # Output helpers (portable)
 # ==================================================
 
+log() {
+  printf '%b\n' "$1"
+}
+
 if [[ -t 1 ]]; then
   INFO="\033[0;34m\033[1m[INFO]\033[0m"
   OK="\033[0;32m\033[1m[OK]\033[0m"
@@ -17,8 +21,13 @@ else
   ERR="[ERROR]"
 fi
 
-echo "$INFO Running install.sh"
-echo "$INFO This script installs dotfiles by creating symbolic links"
+info() { log "$INFO $*"; }
+ok()   { log "$OK $*"; }
+warn() { log "$WARN $*"; }
+err()  { log "$ERR $*"; }
+
+info "Running install.sh"
+info "This script installs dotfiles by creating symbolic links"
 
 # ==================================================
 # Paths
@@ -40,8 +49,8 @@ backup_and_remove() {
   if [[ -e "$target" || -L "$target" ]]; then
     local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
     mv "$target" "$backup"
-    echo -e "$WARN Existing $(basename "$target") backed up"
-    echo -e "$INFO Backup created at: $(basename "$backup")"
+    warn "Existing $(basename "$target") backed up"
+    info "Backup created at: $(basename "$backup")"
   fi
 }
 
@@ -52,15 +61,15 @@ is_windows() {
 # ==================================================
 # Start
 # ==================================================
-echo -e "$INFO Installing dotfiles"
-echo -e "$INFO Dotfiles directory: $DOTFILES_DIR"
-echo
+info "Installing dotfiles"
+info "Dotfiles directory: $DOTFILES_DIR"
+log
 
 # ==================================================
 # Validate sources
 # ==================================================
-[[ -f "$BASHRC_SRC" ]] || { echo -e "$ERR Missing bashrc source"; exit 1; }
-[[ -f "$GITCONFIG_SRC" ]] || { echo -e "$ERR Missing gitconfig source"; exit 1; }
+[[ -f "$BASHRC_SRC" ]] || { err "Missing bashrc source"; exit 1; }
+[[ -f "$GITCONFIG_SRC" ]] || { err "Missing gitconfig source"; exit 1; }
 
 # ==================================================
 # Backup existing configs
@@ -72,32 +81,32 @@ backup_and_remove "$GITCONFIG_DEST"
 # Install bashrc
 # ==================================================
 if is_windows; then
-  echo -e "$INFO Installing bashrc (Windows)"
+  info "Installing bashrc (Windows)"
   cmd.exe /c mklink "%USERPROFILE%\\.bashrc" "$(cygpath -w "$BASHRC_SRC")" >nul
 else
-  echo -e "$INFO Installing bashrc (Linux)"
+  info "Installing bashrc (Linux)"
   ln -sf "$BASHRC_SRC" "$BASHRC_DEST"
 fi
 
-echo -e "$OK bashrc installed"
+ok "bashrc installed"
 
 # ==================================================
 # Install gitconfig
 # ==================================================
 if is_windows; then
-  echo -e "$INFO Installing gitconfig (Windows)"
+  info "Installing gitconfig (Windows)"
   cmd.exe /c mklink "%USERPROFILE%\\.gitconfig" "$(cygpath -w "$GITCONFIG_SRC")" >nul
 else
-  echo -e "$INFO Installing gitconfig (Linux)"
+  info "Installing gitconfig (Linux)"
   ln -sf "$GITCONFIG_SRC" "$GITCONFIG_DEST"
 fi
 
-echo -e "$OK gitconfig installed"
+ok "gitconfig installed"
 
 # ==================================================
 # Done
 # ==================================================
-echo
-echo -e "$OK Installation complete"
-echo -e "$INFO Reload your shell with: source ~/.bashrc"
-echo -e "$INFO Or open a new terminal"
+log
+ok "Installation complete"
+info "Reload your shell with: source ~/.bashrc"
+info "Or open a new terminal"
