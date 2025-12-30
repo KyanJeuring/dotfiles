@@ -4,7 +4,6 @@ set -euo pipefail
 # ==================================================
 # Colors / output helpers
 # ==================================================
-
 if [[ -t 1 ]]; then
   BLACK='\033[0;30m'
   RED='\033[0;31m'
@@ -20,19 +19,8 @@ if [[ -t 1 ]]; then
   REVERSE='\033[7m'
   NC='\033[0m'
 else
-  BLACK=''
-  RED=''
-  GREEN=''
-  YELLOW=''
-  BLUE=''
-  MAGENTA=''
-  CYAN=''
-  WHITE=''
-
-  LIGHT=''
-  UNDERLINE=''
-  REVERSE=''
-  NC=''
+  BLACK='' RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN='' WHITE=''
+  LIGHT='' UNDERLINE='' REVERSE='' NC=''
 fi
 
 OK="${GREEN}${LIGHT}[OK]${NC}"
@@ -60,13 +48,13 @@ backup_and_remove() {
   if [[ -e "$target" || -L "$target" ]]; then
     local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
     mv "$target" "$backup"
-    echo -e "$WARN Existing $(basename "$target") backed up and removed"
+    echo -e "$WARN Existing $(basename "$target") backed up"
     echo -e "$INFO Backup created at: $(basename "$backup")"
   fi
 }
 
 is_windows() {
-  [[ "$OS" == "Windows_NT" ]]
+  [[ "${OS:-}" == "Windows_NT" ]]
 }
 
 # ==================================================
@@ -83,7 +71,7 @@ echo
 [[ -f "$GITCONFIG_SRC" ]] || { echo -e "$ERR Missing gitconfig source"; exit 1; }
 
 # ==================================================
-# Backup + remove existing configs
+# Backup existing configs
 # ==================================================
 backup_and_remove "$BASHRC_DEST"
 backup_and_remove "$GITCONFIG_DEST"
@@ -92,11 +80,11 @@ backup_and_remove "$GITCONFIG_DEST"
 # Install bashrc
 # ==================================================
 if is_windows; then
-  echo -e "$INFO Installing bashrc (Windows / CMD)"
+  echo -e "$INFO Installing bashrc (Windows)"
   cmd.exe /c mklink "%USERPROFILE%\\.bashrc" "$(cygpath -w "$BASHRC_SRC")" >nul
 else
   echo -e "$INFO Installing bashrc (Linux)"
-  ln -s "$BASHRC_SRC" "$BASHRC_DEST"
+  ln -sf "$BASHRC_SRC" "$BASHRC_DEST"
 fi
 
 echo -e "$OK bashrc installed"
@@ -105,11 +93,11 @@ echo -e "$OK bashrc installed"
 # Install gitconfig
 # ==================================================
 if is_windows; then
-  echo -e "$INFO Installing gitconfig (Windows / CMD)"
+  echo -e "$INFO Installing gitconfig (Windows)"
   cmd.exe /c mklink "%USERPROFILE%\\.gitconfig" "$(cygpath -w "$GITCONFIG_SRC")" >nul
 else
   echo -e "$INFO Installing gitconfig (Linux)"
-  ln -s "$GITCONFIG_SRC" "$GITCONFIG_DEST"
+  ln -sf "$GITCONFIG_SRC" "$GITCONFIG_DEST"
 fi
 
 echo -e "$OK gitconfig installed"
@@ -119,4 +107,5 @@ echo -e "$OK gitconfig installed"
 # ==================================================
 echo
 echo -e "$OK Installation complete"
-echo -e "$INFO Restart your shell or run: source ~/.bashrc"
+echo -e "$INFO Reload your shell with: source ~/.bashrc"
+echo -e "$INFO Or open a new terminal"
