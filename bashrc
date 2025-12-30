@@ -1,5 +1,13 @@
 # ==================================================
-# Output formatting (safe + portable)
+# Bashrc – dotfiles managed
+# ==================================================
+
+### Prevent double-loading
+[[ -n "${__DOTFILES_BASHRC_LOADED:-}" ]] && return
+__DOTFILES_BASHRC_LOADED=1
+
+# ==================================================
+# Output formatting
 # ==================================================
 
 if [[ -t 1 ]]; then
@@ -17,25 +25,31 @@ if [[ -t 1 ]]; then
   REVERSE='\033[7m'
   NC='\033[0m'
 else
-  BLACK=''
-  RED=''
-  GREEN=''
-  YELLOW=''
-  BLUE=''
-  MAGENTA=''
-  CYAN=''
-  WHITE=''
-
-  LIGHT=''
-  UNDERLINE=''
-  REVERSE=''
-  NC=''
+  BLACK='' RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN='' WHITE=''
+  LIGHT='' UNDERLINE='' REVERSE='' NC=''
 fi
 
 OK="${GREEN}${LIGHT}[OK]${NC}"
 ERR="${RED}[ERROR]${NC}"
 INFO="${BLUE}${LIGHT}[INFO]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
+
+# ==================================================
+# Deprecated commands (single source of truth)
+# ==================================================
+
+DEPRECATED_FUNCTIONS=(
+  deploy
+  bashrc-update
+)
+
+### Remove deprecated functions automatically (warn once)
+for fn in "${DEPRECATED_FUNCTIONS[@]}"; do
+  if declare -F "$fn" >/dev/null; then
+    echo -e "$WARN '$fn' is deprecated and has been removed"
+    unset -f "$fn"
+  fi
+done
 
 # ==================================================
 # Utility helpers
@@ -47,7 +61,6 @@ bashrc() {
   echo
 
   awk '
-    # Detect real section headers (ignore separators and ## docs)
     /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
       section = substr($0, 3)
       next
@@ -103,7 +116,7 @@ dotfiles-update() {
   }
 
   echo -e "$INFO Reloading bashrc"
-  # shellcheck disable=SC1090
+  ### shellcheck disable=SC1090
   source "$bashrc_link"
 
   echo -e "$OK Dotfiles updated and bashrc reloaded"
