@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # ==================================================
-# Output formatting (portable ANSI)
+# Colors / output helpers
 # ==================================================
-
 if [[ -t 1 ]]; then
   RED='\033[0;31m'
   GREEN='\033[0;32m'
@@ -15,15 +14,25 @@ else
   RED='' GREEN='' YELLOW='' BLUE='' NC=''
 fi
 
-INFO="${BLUE}[INFO]${NC}"
 OK="${GREEN}[OK]${NC}"
+INFO="${BLUE}[INFO]${NC}"
 WARN="${YELLOW}[WARN]${NC}"
 ERR="${RED}[ERROR]${NC}"
 
 # ==================================================
+# Paths
+# ==================================================
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+BASHRC_SRC="$DOTFILES_DIR/bashrc"
+GITCONFIG_SRC="$DOTFILES_DIR/gitconfig"
+
+BASHRC_DEST="$HOME/.bashrc"
+GITCONFIG_DEST="$HOME/.gitconfig"
+
+# ==================================================
 # Helpers
 # ==================================================
-
 backup_and_remove() {
   local target="$1"
 
@@ -31,106 +40,62 @@ backup_and_remove() {
     local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
     mv "$target" "$backup"
     echo -e "$WARN Existing $(basename "$target") backed up and removed"
-    echo -e "$INFO Backup created: $(basename "$backup")"
+    echo -e "$INFO Backup created at: $(basename "$backup")"
   fi
 }
 
-link_linux() {
-  local src="$1"
-  local dest="$2"
-
-  ln -s "$src" "$dest"
-  echo -e "$OK Linked $(basename "$dest")"
-}
-
-link_windows_cmd() {
-  local src="$1"
-  local dest="$2"
-
-  local src_win dest_win
-  src_win="$(cygpath -w "$src")"
-  dest_win="$(cygpath -w "$dest")"
-
-  if cmd.exe /c "mklink \"$dest_win\" \"$src_win\"" >/dev/null 2>&1; then
-    echo -e "$OK Linked $(basename "$dest") (via cmd)"
-    return 0
-  fi
-
-  return 1
-}
-
-copy_fallback() {
-  local src="$1"
-  local dest="$2"
-
-  cp "$src" "$dest"
-  echo -e "$WARN Symlink unavailable — copied instead"
+is_windows() {
+  [[ "$OS" == "Windows_NT" ]]
 }
 
 # ==================================================
-# OS detection
+# Start
 # ==================================================
-
-OS="linux"
-case "$(uname -s)" in
-  Linux*) OS="linux" ;;
-  MINGW*|MSYS*|CYGWIN*) OS="windows" ;;
-esac
-
-echo -e "$INFO Detected OS: $OS"
+echo -e "$INFO Installing dotfiles"
+echo -e "$INFO Dotfiles directory: $DOTFILES_DIR"
+echo
 
 # ==================================================
-# Paths
+# Validate sources
 # ==================================================
-
-DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOME_DIR="$HOME"
-
-BASHRC_SRC="$DOTFILES_DIR/bashrc"
-BASHRC_DEST="$HOME_DIR/.bashrc"
-BASH_PROFILE="$HOME_DIR/.bash_profile"
+[[ -f "$BASHRC_SRC" ]] || { echo -e "$ERR Missing bashrc source"; exit 1; }
+[[ -f "$GITCONFIG_SRC" ]] || { echo -e "$ERR Missing gitconfig source"; exit 1; }
 
 # ==================================================
-# Validate source
+# Backup + remove existing configs
 # ==================================================
-
-if [[ ! -f "$BASHRC_SRC" ]]; then
-  echo -e "$ERR bashrc not found in dotfiles repo"
-  exit 1
-fi
+backup_and_remove "$BASHRC_DEST"
+backup_and_remove "$GITCONFIG_DEST"
 
 # ==================================================
 # Install bashrc
 # ==================================================
-
-backup_and_remove "$BASHRC_DEST"
-
-if [[ "$OS" == "linux" ]]; then
-  link_linux "$BASHRC_SRC" "$BASHRC_DEST"
-
-elif [[ "$OS" == "windows" ]]; then
-  if ! link_windows_cmd "$BASHRC_SRC" "$BASHRC_DEST"; then
-    copy_fallback "$BASHRC_SRC" "$BASHRC_DEST"
-  fi
-fi
-
-# ==================================================
-# Ensure bash_profile sources bashrc
-# ==================================================
-
-if [[ ! -f "$BASH_PROFILE" ]]; then
-  echo '[[ -f ~/.bashrc ]] && source ~/.bashrc' > "$BASH_PROFILE"
-  echo -e "$OK Created .bash_profile"
-elif ! grep -q "source ~/.bashrc" "$BASH_PROFILE"; then
-  echo '[[ -f ~/.bashrc ]] && source ~/.bashrc' >> "$BASH_PROFILE"
-  echo -e "$OK Updated .bash_profile"
+if is_windows; then
+  echo -e "$INFO Installing bashrc (Windows / CMD)"
+  cmd.exe /c mklink "%USERPROFILE%\\.bashrc" "$(cygpath -w "$BASHRC_SRC")" >nul
 else
-  echo -e "$INFO .bash_profile already configured"
+  echo -e "$INFO Installing bashrc (Linux)"
+  ln -s "$BASHRC_SRC" "$BASHRC_DEST"
 fi
+
+echo -e "$OK bashrc installed"
+
+# ==================================================
+# Install gitconfig
+# ==================================================
+if is_windows; then
+  echo -e "$INFO Installing gitconfig (Windows / CMD)"
+  cmd.exe /c mklink "%USERPROFILE%\\.gitconfig" "$(cygpath -w "$GITCONFIG_SRC")" >nul
+else
+  echo -e "$INFO Installing gitconfig (Linux)"
+  ln -s "$GITCONFIG_SRC" "$GITCONFIG_DEST"
+fi
+
+echo -e "$OK gitconfig installed"
 
 # ==================================================
 # Done
 # ==================================================
-
-echo -e "$OK Dotfiles installation complete"
+echo
+echo -e "$OK Installation complete"
 echo -e "$INFO Restart your shell or run: source ~/.bashrc"
