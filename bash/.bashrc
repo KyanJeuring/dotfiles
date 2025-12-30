@@ -587,6 +587,62 @@ _abort_reset() {
 }
 
 # ==================================================
+# Git helpers
+# ==================================================
+
+## Clone a GitHub
+gclone() {
+  local repo user url
+
+  case "$#" in
+    1)
+      repo="$1"
+      user="kyanjeuring"
+      ;;
+    2)
+      repo="$1"
+      user="$2"
+      ;;
+    *)
+      echo -e "$ERR Usage: gclone <repo> [username]"
+      return 1
+      ;;
+  esac
+
+  if [[ ! "$repo" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo -e "$ERR Invalid repository name: '$repo'"
+    return 1
+  fi
+
+  if [[ ! "$user" =~ ^[a-zA-Z0-9-]+$ ]]; then
+    echo -e "$ERR Invalid username: '$user'"
+    return 1
+  fi
+
+  case "$user" in
+    kyanjeuring|kj|kyan|kyanj|me|myself)
+      user="kyanjeuring"
+      ;;
+  esac
+
+  url="git@github.com:$user/$repo.git"
+
+  echo -e "$INFO Checking repository access"
+  if ! git ls-remote "$url" >/dev/null 2>&1; then
+    echo -e "$ERR Repository not found or access denied"
+    return 1
+  fi
+
+  echo -e "$INFO Cloning $user/$repo (SSH)"
+  if git clone "$url"; then
+    echo -e "$OK Clone complete"
+  else
+    echo -e "$ERR Clone failed"
+    return 1
+  fi
+}
+
+# ==================================================
 # Git status & inspection
 # ==================================================
 
