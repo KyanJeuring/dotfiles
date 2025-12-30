@@ -76,6 +76,39 @@ bashrc() {
   '
 }
 
+## Update bashrc from dotfiles repository
+bashrc-update() {
+  local bashrc_link bashrc_real repo_dir
+
+  bashrc_link="${BASH_SOURCE[0]}"
+  bashrc_real="$(readlink -f "$bashrc_link" 2>/dev/null || realpath "$bashrc_link")"
+
+  repo_dir="$(cd "$(dirname "$bashrc_real")" \
+    && git rev-parse --show-toplevel 2>/dev/null || true)"
+
+  if [[ -z "$repo_dir" ]]; then
+    echo -e "$ERR Could not locate dotfiles git repository"
+    return 1
+  fi
+
+  echo -e "$INFO Updating bashrc from dotfiles repo"
+  echo -e "$INFO Repo: $repo_dir"
+
+  (
+    cd "$repo_dir"
+    git pull --ff-only
+  ) || {
+    echo -e "$ERR Git pull failed"
+    return 1
+  }
+
+  echo -e "$INFO Reloading bashrc"
+  # shellcheck disable=SC1090
+  source "$bashrc_link"
+
+  echo -e "$OK bashrc updated and reloaded"
+}
+
 confirm() {
   read -rp "$1 (y/N): " ans
   [[ "$ans" =~ ^[Yy]$ ]]
