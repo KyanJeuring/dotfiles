@@ -748,13 +748,29 @@ whatwillpromote() {
 }
 
 # ==================================================
-# Git staging & restore
+# Git staging, committing & restore
 # ==================================================
 
 ## Stage all changes
 ga() {
   git add .
   echo -e "$OK All changes staged"
+}
+
+## Commit staged changes
+gc() {
+  if git diff --quiet && git diff --cached --quiet; then
+    echo -e "$INFO Nothing to commit"
+    return 0
+  fi
+
+  ga || return 1
+
+  if [[ $# -eq 0 ]]; then
+    git commit && echo -e "$OK Changes committed"
+  else
+    git commit -m "$*" && echo -e "$OK Changes committed"
+  fi
 }
 
 ## Restore unstaged changes
