@@ -612,7 +612,7 @@ _abort_reset() {
 
 ## Clone a GitHub
 gclone() {
-  local repo user url
+  local repo user url target
 
   case "$#" in
     1)
@@ -629,6 +629,8 @@ gclone() {
       ;;
   esac
 
+  target="$repo"
+
   if [[ ! "$repo" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     echo -e "$ERR Invalid repository name: '$repo'"
     return 1
@@ -636,6 +638,18 @@ gclone() {
 
   if [[ ! "$user" =~ ^[a-zA-Z0-9-]+$ ]]; then
     echo -e "$ERR Invalid username: '$user'"
+    return 1
+  fi
+
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local root
+    root=$(git rev-parse --show-toplevel 2>/dev/null)
+    echo -e "$ERR Cannot clone inside an existing Git repository"
+    return 1
+  fi
+
+  if [[ -e "$target" ]]; then
+    echo -e "$WARN Repository already cloned: $target"
     return 1
   fi
 
