@@ -1059,10 +1059,10 @@ promote() {
 
   trap cleanup RETURN
   trap cleanup EXIT
-  trap 'echo -e "$ERR Deploy interrupted"; return 1' INT TERM
+  trap 'echo -e "$ERR Promote interrupted"; return 1' INT TERM
 
   if [[ "$original" != "dev" ]]; then
-    echo -e "$ERR Deploy must be run from dev (current: $original)"
+    echo -e "$ERR Promote must be run from dev (current: $original)"
     return 1
   fi
 
@@ -1075,7 +1075,7 @@ promote() {
   git fetch origin || return 1
 
   if [[ -z "$(git log origin/main..dev --oneline)" ]]; then
-    echo -e "$INFO Nothing to deploy (dev == main)"
+    echo -e "$INFO Nothing to promote (dev == main)"
     return 0
   fi
 
@@ -1107,12 +1107,12 @@ promote() {
     return 1
   fi
 
-  echo -e "$INFO Tagging deploy"
-  tag="deploy-$(date +%Y%m%d-%H%M%S)"
-  git tag -a "$tag" -m "Production deploy" || return 1
+  echo -e "$INFO Tagging promote"
+  tag="promote-$(date +%Y%m%d-%H%M%S)"
+  git tag -a "$tag" -m "Production promote" || return 1
   git push origin "$tag" || return 1
 
-  echo -e "$OK Deploy successful ($tag)"
+  echo -e "$OK Promote successful ($tag)"
 }
 
 # ==================================================
