@@ -7,32 +7,20 @@
 __DOTFILES_BASHRC_LOADED=1
 
 # ==================================================
-# Output formatting
+# Output helpers (portable)
 # ==================================================
 
 if [[ -t 1 ]]; then
-  BLACK='\033[0;30m'
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  YELLOW='\033[0;33m'
-  BLUE='\033[0;34m'
-  MAGENTA='\033[0;35m'
-  CYAN='\033[0;36m'
-  WHITE='\033[0;37m'
-
-  LIGHT='\033[1m'
-  UNDERLINE='\033[4m'
-  REVERSE='\033[7m'
-  NC='\033[0m'
+  INFO="\033[0;34m\033[1m[INFO]\033[0m"
+  OK="\033[0;32m\033[1m[OK]\033[0m"
+  WARN="\033[0;33m\033[1m[WARN]\033[0m"
+  ERR="\033[0;31m\033[1m[ERR]\033[0m"
 else
-  BLACK='' RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN='' WHITE=''
-  LIGHT='' UNDERLINE='' REVERSE='' NC=''
+  INFO="[INFO]"
+  OK="[OK]"
+  WARN="[WARN]"
+  ERR="[ERR]"
 fi
-
-OK="${GREEN}${LIGHT}[OK]${NC}"
-ERR="${RED}[ERROR]${NC}"
-INFO="${BLUE}${LIGHT}[INFO]${NC}"
-WARN="${YELLOW}[WARN]${NC}"
 
 # ==================================================
 # Deprecated commands (single source of truth)
