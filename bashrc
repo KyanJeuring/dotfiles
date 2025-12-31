@@ -544,15 +544,18 @@ bu() {
 ## Remove files/directories safely
 rmf() {
   [[ -z "$1" ]] && {
-    err "Usage: rmf <file|dir>"
+    err "Usage: rmf <file|dir> [...]"
     return 1
   }
 
   warn "This will permanently delete:"
-  log "  %s\n" "$@"
+  for item in "$@"; do
+    log "  $item"
+  done
+
   confirm "Continue?" || return 1
 
-  rm -rf "$@"
+  rm -rf -- "$@"
   ok "Removed"
 }
 
