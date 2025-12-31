@@ -822,7 +822,7 @@ gabort() {
 
 ## Undo last commit (soft)
 gus() {
-  [[ "$1" == "--abort" ]] && { _abort_reset; return $?; }
+  [[ "${1:-}" == "--abort" ]] && { _abort_reset; return $?; }
 
   git rev-parse HEAD >/dev/null 2>&1 || {
     err "Repository has no commits"
@@ -841,7 +841,7 @@ gus() {
 
 ## Undo last commit (hard)
 guh() {
-  [[ "$1" == "--abort" ]] && {
+  [[ "${1:-}" == "--abort" ]] && {
     warn "guh --abort only works immediately after guh"
     _abort_reset
     return $?
