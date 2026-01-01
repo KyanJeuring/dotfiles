@@ -88,16 +88,14 @@ bashrc() {
 
 ## Update dotfiles repository and reload bashrc
 dotfiles-update() {
-  local bashrc_link bashrc_real repo_dir
+  local repo_dir install_script
 
-  bashrc_link="${BASH_SOURCE[0]}"
-  bashrc_real="$(readlink -f "$bashrc_link" 2>/dev/null || realpath "$bashrc_link")"
+  repo_dir="$HOME/dotfiles"
+  install_script="$repo_dir/install.sh"
 
-  repo_dir="$(cd "$(dirname "$bashrc_real")" \
-    && git rev-parse --show-toplevel 2>/dev/null || true)"
-
-  if [[ -z "$repo_dir" ]]; then
-    err "Could not locate dotfiles git repository"
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    err "Dotfiles repository not found at $repo_dir"
+    err "Run the bootstrap installer first"
     return 1
   fi
 
@@ -112,11 +110,20 @@ dotfiles-update() {
     return 1
   }
 
-  info "Reloading bashrc"
-  ### shellcheck disable=SC1090
-  source "$bashrc_link"
+  if [[ ! -f "$install_script" ]]; then
+    err "install.sh not found in dotfiles repository"
+    return 1
+  fi
 
-  ok "Dotfiles updated and bashrc reloaded"
+  if [[ ! -x "$install_script" ]]; then
+    chmod +x "$install_script"
+  fi
+
+  info "Running install.sh"
+  "$install_script" || {
+    err "install.sh failed"
+    return 1
+  }
 }
 
 confirm() {
