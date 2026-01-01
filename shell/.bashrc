@@ -695,21 +695,29 @@ _abort_reset() {
 # Git helpers
 # ==================================================
 
-## Clone a GitHub
+## Clone a GitHub repository
 gclone() {
-  local repo user url target
+  local repo user host url target
 
   case "$#" in
     1)
       repo="$1"
       user="kyanjeuring"
+      host="github.com"
       ;;
     2)
       repo="$1"
       user="$2"
+      host="github.com"
+      ;;
+    3)
+      repo="$1"
+      user="$2"
+      host="$3"
       ;;
     *)
-      err "Usage: gclone <repo> [username]"
+      err "Usage: gclone <repo> [username] [ssh-host]"
+      err "Example: gclone dotfiles kyanjeuring github-work"
       return 1
       ;;
   esac
@@ -726,15 +734,18 @@ gclone() {
     return 1
   fi
 
+  if [[ ! "$host" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    err "Invalid SSH host: '$host'"
+    return 1
+  fi
+
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    local root
-    root=$(git rev-parse --show-toplevel 2>/dev/null)
     err "Cannot clone inside an existing Git repository"
     return 1
   fi
 
   if [[ -e "$target" ]]; then
-    warn "Repository already cloned: $target"
+    warn "Repository already exists: $target"
     return 1
   fi
 
@@ -744,15 +755,33 @@ gclone() {
       ;;
   esac
 
-  url="git@github.com:$user/$repo.git"
+  url="git@$host:$user/$repo.git"
 
   info "Checking repository access"
   if ! git ls-remote "$url" >/dev/null 2>&1; then
     err "Repository not found or access denied"
+    err "Used SSH host: $host"
+    log
+    warn "This command clones repositories over SSH."
+    warn "Access is determined by the SSH key used and the GitHub account it belongs to."
+    log
+    warn "Possible causes:"
+    warn "  - The SSH key used maps to a GitHub account that does not have access"
+    warn "  - No SSH key is configured for GitHub on this machine"
+    log
+    warn "If needed, generate an SSH key and add it to the GitHub account"
+    warn "that has access to this repository."
+    log
+    warn "To retry with a specific SSH identity, specify the SSH host explicitly:"
+    log
+    log "  gclone $repo $user <ssh-host>"
+    log
+    warn "Example:"
+    log "  gclone $repo $user github-work"
     return 1
   fi
 
-  info "Cloning $user/$repo (SSH)"
+  info "Cloning $user/$repo via SSH ($host)"
   if git clone "$url"; then
     ok "Clone complete"
   else
