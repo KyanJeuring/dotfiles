@@ -806,7 +806,16 @@ gtemplate() {
   local reply name target template
   local old_nullglob
 
-  root || return 1
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    root || return 1
+  else
+    info "Not a Git repository, initializing one"
+    git init || {
+      err "git init failed"
+      return 1
+    }
+    root || return 1
+  fi
 
   [[ -d "$template_dir" ]] || {
     err "Template directory not found: $template_dir"
@@ -879,7 +888,7 @@ gtemplate() {
     err "Templates failed: $failed"
     return 1
   }
-  
+
   return 0
 }
 
