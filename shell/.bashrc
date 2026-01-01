@@ -771,7 +771,7 @@ gclone() {
     warn "If needed, generate an SSH key and add it to the GitHub account"
     warn "that has access to this repository."
     warn
-    warn "To retry with a specific SSH identity, specify the SSH host explicitly:"
+    warn "Try the gclone command and specify the user and SSH host:"
     warn "  gclone $repo <user> <ssh-host>"
     return 1
   fi
