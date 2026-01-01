@@ -532,13 +532,47 @@ catp() {
 
 ## Backup a file or directory
 bu() {
-  [[ -z "$1" ]] && {
+  local target="$1"
+
+  [[ -z "$target" ]] && {
     err "Usage: bu <file|dir>"
     return 1
   }
 
-  cp -r "$1" "$1.back-up.$(date +%Y%m%d-%H%M%S)"
-  ok "Backup created"
+  [[ ! -e "$target" ]] && {
+    err "Target does not exist: $target"
+    return 1
+  }
+
+  local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
+
+  cp -a "$target" "$backup"
+  ok "Backup created: $backup"
+}
+
+
+## Restore a file or directory from backup
+rbu() {
+  local backup="$1"
+
+  [[ -z "$backup" ]] && {
+    err "Usage: rbu <file|dir>.bak.YYYYMMDD-HHMMSS"
+    return 1
+  }
+
+  [[ ! -e "$backup" ]] && {
+    err "Backup not found: $backup"
+    return 1
+  }
+
+  local original="${backup%.bak.*}"
+
+  if [[ -e "$original" ]]; then
+    warn "Existing target will be overwritten: $original"
+  fi
+
+  cp -a "$backup" "$original"
+  ok "Restored: $original"
 }
 
 ## Remove files/directories safely
