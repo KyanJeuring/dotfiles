@@ -930,6 +930,31 @@ whatwillpromote() {
   git log main..dev --oneline --decorate
 }
 
+## Show active git SSH host for current repository
+git-host-status() {
+  local url host repo
+
+  root || return 1
+
+  url=$(git remote get-url origin 2>/dev/null) || {
+    err "No origin remote found"
+    return 1
+  }
+
+  if [[ "$url" =~ ^git@([^:]+):(.+)\.git$ ]]; then
+    host="${BASH_REMATCH[1]}"
+    repo="${BASH_REMATCH[2]}"
+
+    info "Git SSH host status"
+    printf "  Host: %s\n" "$host"
+    printf "  Repo: %s\n" "$repo"
+    printf "  URL:  %s\n" "$url"
+  else
+    warn "Origin remote is not using SSH"
+    printf "  URL: %s\n" "$url"
+  fi
+}
+
 # ==================================================
 # Git staging, committing & restore
 # ==================================================
