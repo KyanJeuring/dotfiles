@@ -804,23 +804,31 @@ gtemplate() {
   local template_dir="$HOME/dotfiles/git/templates"
   local applied=0 skipped=0 overwritten=0 failed=0
   local reply name target template
-  local old_nullglob
-
-  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    root || return 1
-  else
-    info "Not a Git repository, initializing one"
-    git init || {
-      err "git init failed"
-      return 1
-    }
-    root || return 1
-  fi
+  local old_nullglob repo_root
 
   [[ -d "$template_dir" ]] || {
     err "Template directory not found: $template_dir"
     return 1
   }
+
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+      err "Failed to resolve repository root"
+      return 1
+    }
+    cd "$repo_root" || return 1
+  else
+    info "Not a Git repository, initializing one"
+    git init >/dev/null 2>&1 || {
+      err "git init failed"
+      return 1
+    }
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+      err "git init succeeded but repo root could not be resolved"
+      return 1
+    }
+    cd "$repo_root" || return 1
+  fi
 
   info "Applying git templates from: $template_dir"
 
@@ -829,7 +837,6 @@ gtemplate() {
 
   for template in "$template_dir"/* "$template_dir"/.*; do
     name="$(basename "$template")"
-
     [[ "$name" == "." || "$name" == ".." ]] && continue
 
     target="$PWD/$name"
