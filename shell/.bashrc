@@ -100,7 +100,7 @@ dotfiles-update() {
   fi
 
   info "Updating dotfiles repository"
-  info "Repo: $repo_dir"
+  info "Repo: $repo_dir"  
 
   (
     cd "$repo_dir"
@@ -210,19 +210,19 @@ _sysinfo_linux() {
   terminal="${TERM_PROGRAM:-$TERM}"
   ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
 
-  log "  OS:        %s\n" "$os"
-  log "  Host:      %s\n" "$host"
-  log "  Kernel:    %s\n" "$kernel"
-  log "  Uptime:    %s\n" "$uptime_str"
-  log "  Load:      %s\n" "$load"
-  log "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
-  log "  Memory:    %s / %s | %s%%\n" "$mem_used" "$mem_total" "$mem_pct"
-  log "  Swap:      %s / %s | %s%%\n" "$swap_used" "$swap_total" "$swap_pct"
-  log "  Disk (/):  %s / %s | %s\n" "$disk_used" "$disk_total" "$disk_pct"
-  log "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
-  log "  Display:   %s\n" "$display"
-  log "  Terminal:  %s\n" "$terminal"
-  log "  IP:        %s\n" "${ip:-N/A}"
+  printf "  OS:        %s\n" "$os"
+  printf "  Host:      %s\n" "$host"
+  printf "  Kernel:    %s\n" "$kernel"
+  printf "  Uptime:    %s\n" "$uptime_str"
+  printf "  Load:      %s\n" "$load"
+  printf "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
+  printf "  Memory:    %s / %s | %s%%\n" "$mem_used" "$mem_total" "$mem_pct"
+  printf "  Swap:      %s / %s | %s%%\n" "$swap_used" "$swap_total" "$swap_pct"
+  printf "  Disk (/):  %s / %s | %s\n" "$disk_used" "$disk_total" "$disk_pct"
+  printf "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
+  printf "  Display:   %s\n" "$display"
+  printf "  Terminal:  %s\n" "$terminal"
+  printf "  IP:        %s\n" "${ip:-N/A}"
   log
   ok "Summary Complete"
 }
@@ -274,20 +274,19 @@ _sysinfo_windows() {
   terminal="${TERM_PROGRAM:-$TERM}"
   ip=$(ipconfig | awk '/IPv4 Address/ {print $NF; exit}')
 
-  log "  OS:        %s\n" "$os"
-  log "  Host:      %s\n" "$host"
-  log "  Kernel:    %s\n" "$kernel"
-  log "  Uptime:    %s\n" "$uptime_str"
-  log "  Load:      N/A\n"
-  log "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
-  log "  Memory:    %s / %s | %s%%\n" "$mem_used_h" "$mem_total_h" "$mem_pct"
-  log "  Swap:      N/A\n"
-  log "  Disk (/):  %s / %s | %s\n" "$disk_used_h" "$disk_total_h" "$disk_pct"
-  log "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
-  log "  Display:   N/A\n"
-  log "  Terminal:  %s\n" "$terminal"
-  log "  IP:        %s\n" "$ip"
-
+  printf "  OS:        %s\n" "$os"
+  printf "  Host:      %s\n" "$host"
+  printf "  Kernel:    %s\n" "$kernel"
+  printf "  Uptime:    %s\n" "$uptime_str"
+  printf "  Load:      N/A\n"
+  printf "  CPU:       %s | %s%%\n" "$cpu_model" "$cpu_pct"
+  printf "  Memory:    %s / %s | %s%%\n" "$mem_used_h" "$mem_total_h" "$mem_pct"
+  printf "  Swap:      N/A\n"
+  printf "  Disk (/):  %s / %s | %s\n" "$disk_used_h" "$disk_total_h" "$disk_pct"
+  printf "  GPU:       %s | %s\n" "$gpu" "$gpu_pct"
+  printf "  Display:   N/A\n"
+  printf "  Terminal:  %s\n" "$terminal"
+  printf "  IP:        %s\n" "$ip"
   log
   ok "Summary Complete"
 }
