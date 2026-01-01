@@ -772,7 +772,7 @@ gclone() {
     warn "that has access to this repository."
     warn
     warn "To retry with a specific SSH identity, specify the SSH host explicitly:"
-    warn "  gclone $repo $user <ssh-host>"
+    warn "  gclone $repo <user> <ssh-host>"
     return 1
   fi
 
