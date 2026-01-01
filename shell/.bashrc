@@ -717,7 +717,6 @@ gclone() {
       ;;
     *)
       err "Usage: gclone <repo> [username] [ssh-host]"
-      err "Example: gclone dotfiles kyanjeuring github-work"
       return 1
       ;;
   esac
@@ -775,9 +774,6 @@ gclone() {
     warn "To retry with a specific SSH identity, specify the SSH host explicitly:"
     log
     log "  gclone $repo $user <ssh-host>"
-    log
-    warn "Example:"
-    log "  gclone $repo $user github-work"
     return 1
   fi
 
