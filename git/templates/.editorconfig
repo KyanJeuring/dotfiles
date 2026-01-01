@@ -1,0 +1,67 @@
+root = true
+
+# --------------------------------------------------
+# Global defaults (boring & universal)
+# --------------------------------------------------
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# --------------------------------------------------
+# Build tools
+# --------------------------------------------------
+[Makefile]
+indent_style = tab
+
+# --------------------------------------------------
+# Data & config formats (compact, common tooling)
+# --------------------------------------------------
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[.github/workflows/*.yml]
+indent_size = 2
+
+# --------------------------------------------------
+# Shell scripts (POSIX / Bash conventions)
+# --------------------------------------------------
+[*.sh]
+indent_size = 2
+max_line_length = 100
+
+# --------------------------------------------------
+# Docker
+# --------------------------------------------------
+[Dockerfile]
+indent_size = 2
+
+# --------------------------------------------------
+# Markdown (format-sensitive)
+# --------------------------------------------------
+[*.md]
+trim_trailing_whitespace = false
+indent_size = unset
+
+# --------------------------------------------------
+# Frontend / text formats (optional but common conventions because of javascript ecosystem influence)
+# --------------------------------------------------
+# [*.{html,css,scss}]
+# indent_size = 2
+
+# --------------------------------------------------
+# JavaScript / JS library and frameworks
+# --------------------------------------------------
+[*.{js,jsx,ts,tsx,vue}]
+indent_size = 2
+
+# --------------------------------------------------
+# Ignore generated / vendored code
+# --------------------------------------------------
+[{node_modules/**,dist/**,build/**,coverage/**}]
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = false

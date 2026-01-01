@@ -756,6 +756,134 @@ gclone() {
 }
 
 # ==================================================
+# Git repo templating
+# ==================================================
+
+## Add .gitignore from dotfiles template
+create-gitignore() {
+  root || return 1
+
+  if [[ -f .gitignore ]]; then
+    warn ".gitignore already exists in repo root"
+    return 1
+  fi
+
+  local template="$HOME/dotfiles/git/templates/.gitignore"
+
+  [[ ! -f "$template" ]] && {
+    err "Template not found: $template"
+    return 1
+  }
+
+  cp "$template" .gitignore
+  ok ".gitignore added to repository"
+}
+
+## Add .gitattributes from dotfiles template
+create-gitattributes() {
+  root || return 1
+
+  if [[ -f .gitattributes ]]; then
+    warn ".gitattributes already exists in repo root"
+    return 1
+  fi
+
+  local template="$HOME/dotfiles/git/templates/.gitattributes"
+
+  [[ ! -f "$template" ]] && {
+    err "Template not found: $template"
+    return 1
+  }
+
+  cp "$template" .gitattributes
+  ok ".gitattributes added to repository"
+}
+
+## Apply all git templates from dotfiles to current repo
+gtemplate() {
+  local template_dir="$HOME/dotfiles/git/templates"
+  local applied=0 skipped=0 overwritten=0 failed=0
+  local reply name target template
+  local old_nullglob
+
+  root || return 1
+
+  [[ -d "$template_dir" ]] || {
+    err "Template directory not found: $template_dir"
+    return 1
+  }
+
+  info "Applying git templates from: $template_dir"
+
+  old_nullglob=$(shopt -p nullglob)
+  shopt -s nullglob
+
+  for template in "$template_dir"/* "$template_dir"/.*; do
+    name="$(basename "$template")"
+
+    [[ "$name" == "." || "$name" == ".." ]] && continue
+
+    target="$PWD/$name"
+
+    if [[ -e "$target" ]]; then
+      warn "$name already exists"
+      printf "Overwrite %s? [y/N]: " "$name"
+      read -r reply
+
+      case "$reply" in
+        y|Y|yes|YES)
+          [[ -n "$target" && "$target" != "/" ]] || {
+            err "Refusing to remove unsafe path: $target"
+            failed=$((failed + 1))
+            continue
+          }
+
+          rm -rf "$target" || {
+            err "Failed to remove existing: $name"
+            failed=$((failed + 1))
+            continue
+          }
+
+          if cp -r "$template" "$target"; then
+            ok "$name overwritten"
+            overwritten=$((overwritten + 1))
+          else
+            err "Failed to copy: $name"
+            failed=$((failed + 1))
+          fi
+          ;;
+        *)
+          warn "Skipped $name"
+          skipped=$((skipped + 1))
+          ;;
+      esac
+      continue
+    fi
+
+    if cp -r "$template" "$target"; then
+      ok "$name added"
+      applied=$((applied + 1))
+    else
+      err "Failed to add template: $name"
+      failed=$((failed + 1))
+    fi
+  done
+
+  eval "$old_nullglob"
+
+  info "Templates added: $applied"
+  info "Templates overwritten: $overwritten"
+  info "Templates skipped: $skipped"
+
+  [[ "$failed" -gt 0 ]] && {
+    err "Templates failed: $failed"
+    return 1
+  }
+  
+  return 0
+}
+
+# ==================================================
 # Git status & inspection
 # ==================================================
 
