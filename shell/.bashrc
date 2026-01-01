@@ -763,17 +763,16 @@ gclone() {
     log
     warn "This command clones repositories over SSH."
     warn "Access is determined by the SSH key used and the GitHub account it belongs to."
-    log
+    warn
     warn "Possible causes:"
     warn "  - The SSH key used maps to a GitHub account that does not have access"
     warn "  - No SSH key is configured for GitHub on this machine"
-    log
+    warn
     warn "If needed, generate an SSH key and add it to the GitHub account"
     warn "that has access to this repository."
-    log
+    warn
     warn "To retry with a specific SSH identity, specify the SSH host explicitly:"
-    log
-    log "  gclone $repo $user <ssh-host>"
+    warn "  gclone $repo $user <ssh-host>"
     return 1
   fi
 
