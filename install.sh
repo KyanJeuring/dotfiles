@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+IFS=$'\n\t'
 
 # ==================================================
 # Output helpers (portable)
@@ -27,26 +28,34 @@ warn() { log "$WARN $*"; }
 err()  { log "$ERR $*"; }
 
 info "Running install.sh"
-info "This script installs dotfiles by creating symbolic links"
+info "This script installs dotfiles using symbolic links"
 
 # ==================================================
 # Paths
 # ==================================================
+
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-BASHRC_SRC="$DOTFILES_DIR/bashrc"
-GITCONFIG_SRC="$DOTFILES_DIR/gitconfig"
+BASHRC_SRC="$DOTFILES_DIR/shell/.bashrc"
+GITCONFIG_SRC="$DOTFILES_DIR/git/.gitconfig"
+GITIGNORE_GLOBAL_SRC="$DOTFILES_DIR/git/.gitignore_global"
 
 BASHRC_DEST="$HOME/.bashrc"
 GITCONFIG_DEST="$HOME/.gitconfig"
+GITIGNORE_GLOBAL_DEST="$HOME/.gitignore_global"
 
 # ==================================================
 # Helpers
 # ==================================================
-backup_and_remove() {
+
+is_windows() {
+  [[ "${OS:-}" == "Windows_NT" ]] || grep -qi microsoft /proc/version 2>/dev/null
+}
+
+backup_real_file() {
   local target="$1"
 
-  if [[ -e "$target" || -L "$target" ]]; then
+  if [[ -e "$target" && ! -L "$target" ]]; then
     local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
     mv "$target" "$backup"
     warn "Existing $(basename "$target") backed up"
@@ -54,58 +63,67 @@ backup_and_remove() {
   fi
 }
 
-is_windows() {
-  [[ "${OS:-}" == "Windows_NT" ]]
+remove_wrong_symlink() {
+  local dest="$1"
+  local src="$2"
+
+  if [[ -L "$dest" ]]; then
+    local current
+    current="$(readlink "$dest")"
+    if [[ "$current" != "$src" ]]; then
+      warn "Removing outdated symlink: $(basename "$dest")"
+      rm "$dest"
+    fi
+  fi
 }
 
-# ==================================================
-# Start
-# ==================================================
-info "Installing dotfiles"
-info "Dotfiles directory: $DOTFILES_DIR"
-log
+install_symlink() {
+  local src="$1"
+  local dest="$2"
+  local name="$3"
+
+  backup_real_file "$dest"
+  remove_wrong_symlink "$dest" "$src"
+
+  if is_windows; then
+    info "Installing $name (Windows)"
+    cmd.exe /c mklink "$(cygpath -w "$dest")" "$(cygpath -w "$src")" >nul
+  else
+    info "Installing $name (Unix)"
+    ln -sf "$src" "$dest"
+  fi
+
+  ok "$name installed"
+}
 
 # ==================================================
 # Validate sources
 # ==================================================
+
 [[ -f "$BASHRC_SRC" ]] || { err "Missing bashrc source"; exit 1; }
 [[ -f "$GITCONFIG_SRC" ]] || { err "Missing gitconfig source"; exit 1; }
+[[ -f "$GITIGNORE_GLOBAL_SRC" ]] || { err "Missing gitignore_global source"; exit 1; }
 
 # ==================================================
-# Backup existing configs
+# Install dotfiles
 # ==================================================
-backup_and_remove "$BASHRC_DEST"
-backup_and_remove "$GITCONFIG_DEST"
 
-# ==================================================
-# Install bashrc
-# ==================================================
-if is_windows; then
-  info "Installing bashrc (Windows)"
-  cmd.exe /c mklink "%USERPROFILE%\\.bashrc" "$(cygpath -w "$BASHRC_SRC")" >nul
-else
-  info "Installing bashrc (Linux)"
-  ln -sf "$BASHRC_SRC" "$BASHRC_DEST"
-fi
+info "Installing dotfiles"
+info "Dotfiles directory: $DOTFILES_DIR"
+log
 
-ok "bashrc installed"
+install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
+install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
+install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
 
-# ==================================================
-# Install gitconfig
-# ==================================================
-if is_windows; then
-  info "Installing gitconfig (Windows)"
-  cmd.exe /c mklink "%USERPROFILE%\\.gitconfig" "$(cygpath -w "$GITCONFIG_SRC")" >nul
-else
-  info "Installing gitconfig (Linux)"
-  ln -sf "$GITCONFIG_SRC" "$GITCONFIG_DEST"
-fi
-
-ok "gitconfig installed"
+# Configure git to use global gitignore
+git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
+ok "Git configured to use global gitignore"
 
 # ==================================================
 # Done
 # ==================================================
+
 log
 ok "Installation complete"
 info "Reload your shell with: source ~/.bashrc"
