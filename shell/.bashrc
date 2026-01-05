@@ -13,7 +13,7 @@ __DOTFILES_BASHRC_LOADED=1
 BASHRC_D="$HOME/.bashrc.d"
 
 if [[ -d "$BASHRC_D" ]]; then
-  for file in "$BASHRC_D"/*.bash; do
+  for file in "$BASHRC_D"/*.sh; do
     [[ -r "$file" ]] && source "$file"
   done
 fi
