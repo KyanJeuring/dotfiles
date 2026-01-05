@@ -122,7 +122,7 @@ install_symlink() {
 
   if is_git_bash; then
     info "Installing $name (Git Bash)"
-    ln -s "$src" "$dest"
+    ln -sfn "$src" "$dest"
 
   elif is_windows; then
     info "Installing $name (Windows)"
@@ -133,7 +133,7 @@ install_symlink() {
 
   else
     info "Installing $name (Unix)"
-    ln -s "$src" "$dest"
+    ln -sfn "$src" "$dest"
   fi
 
   ok "$name installed"
