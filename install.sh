@@ -67,12 +67,23 @@ is_windows() {
 backup_real_file() {
   local target="$1"
 
-  if [[ -e "$target" && ! -L "$target" ]]; then
-    local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
-    mv "$target" "$backup"
-    warn "Existing $(basename "$target") backed up"
-    info "Backup created at: $(basename "$backup")"
+  # Only back up regular files (not symlinks, not dirs)
+  [[ -f "$target" && ! -L "$target" ]] || return 0
+
+  # Skip backup if file already points to dotfiles repo
+  if grep -q "$DOTFILES_DIR" "$target" 2>/dev/null; then
+    return 0
   fi
+
+  local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
+
+  mv "$target" "$backup" || {
+    warn "Failed to back up $target (skipping)"
+    return 0
+  }
+
+  warn "Existing $(basename "$target") backed up"
+  info "Backup created at: $(basename "$backup")"
 }
 
 remove_wrong_symlink() {
