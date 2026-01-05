@@ -28,7 +28,7 @@ bashrc() {
     /^## / {
       desc = substr($0, 4)
       getline
-      if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_]*\(\)/) {
+      if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_-]*\(\)/) {
         name = $0
         sub(/\(\).*/, "", name)
         printf "[%s]\n%-22s %s\n", section, name, desc
