@@ -632,9 +632,31 @@ syncdev() {
 # Git release / promotion
 # ==================================================
 
-## Promote dev → main and create a release tag
+## Promote source → target and create a release tag
 promote() {
   set -uo pipefail
+
+  local SRC_BRANCH="dev"
+  local TARGET_BRANCH="main"
+
+  if [[ $# -eq 1 ]]; then
+    warn "Usage:"
+    warn "  promote                   # promote dev → main"
+    warn "  promote <source> <target>  # promote source → target"
+    return 1
+  elif [[ $# -eq 2 ]]; then
+    SRC_BRANCH="$1"
+    TARGET_BRANCH="$2"
+  elif [[ $# -gt 2 ]]; then
+    err "Too many arguments"
+    warn "Usage: promote [<source> <target>]"
+    return 1
+  fi
+
+  if [[ "$SRC_BRANCH" == "$TARGET_BRANCH" ]]; then
+    err "Source and target branches must be different"
+    return 1
+  fi
 
   LOCKDIR="/tmp/git-promote.lock"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
@@ -656,8 +678,8 @@ promote() {
   trap cleanup EXIT
   trap 'err "Promote interrupted"; return 1' INT TERM
 
-  if [[ "$original" != "dev" ]]; then
-    err "Promote must be run from dev (current: $original)"
+  if [[ "$original" != "$SRC_BRANCH" ]]; then
+    err "Promote must be run from '$SRC_BRANCH' (current: $original)"
     return 1
   fi
 
@@ -669,43 +691,43 @@ promote() {
   info "Fetching latest refs"
   git fetch origin || return 1
 
-  if [[ -z "$(git log origin/main..dev --oneline)" ]]; then
-    info "Nothing to promote (dev == main)"
+  if [[ -z "$(git log origin/$TARGET_BRANCH..$SRC_BRANCH --oneline)" ]]; then
+    info "Nothing to promote ($SRC_BRANCH == $TARGET_BRANCH)"
     return 0
   fi
 
-  info "Rebasing dev onto origin/dev"
-  if ! git rebase origin/dev; then
-    err "Rebase failed — resolve conflicts on dev"
+  info "Rebasing $SRC_BRANCH onto origin/$SRC_BRANCH"
+  if ! git rebase "origin/$SRC_BRANCH"; then
+    err "Rebase failed — resolve conflicts on $SRC_BRANCH"
     info "After resolving:"
     info "  git rebase --continue"
-    info "  git push origin dev or promote"
+    info "  git push origin $SRC_BRANCH or promote"
     return 1
   fi
 
-  info "Pushing dev"
-  git push origin dev || return 1
+  info "Pushing $SRC_BRANCH"
+  git push origin "$SRC_BRANCH" || return 1
 
-  info "Switching to main"
-  git switch main || return 1
+  info "Switching to $TARGET_BRANCH"
+  git switch "$TARGET_BRANCH" || return 1
 
-  info "Pulling latest main"
-  git pull origin main || return 1
+  info "Pulling latest $TARGET_BRANCH"
+  git pull origin "$TARGET_BRANCH" || return 1
 
-  info "Fast-forwarding main → dev"
-  git merge --ff-only dev || return 1
+  info "Fast-forwarding $TARGET_BRANCH → $SRC_BRANCH"
+  git merge --ff-only "$SRC_BRANCH" || return 1
 
-  info "Pushing main"
-  if ! git push origin main; then
-    err "Push failed, rolling back local main"
-    git reset --hard origin/main
+  info "Pushing $TARGET_BRANCH"
+  if ! git push origin "$TARGET_BRANCH"; then
+    err "Push failed, rolling back local $TARGET_BRANCH"
+    git reset --hard "origin/$TARGET_BRANCH"
     return 1
   fi
 
   info "Tagging promote"
-  tag="promote-$(date +%Y%m%d-%H%M%S)"
-  git tag -a "$tag" -m "Production promote" || return 1
+  tag="promote-$SRC_BRANCH-to-$TARGET_BRANCH-$(date +%Y%m%d-%H%M%S)"
+  git tag -a "$tag" -m "Promote $SRC_BRANCH → $TARGET_BRANCH" || return 1
   git push origin "$tag" || return 1
 
-  ok "Promote successful ($tag)"
+  ok "Promote successful ($SRC_BRANCH → $TARGET_BRANCH, tag: $tag)"
 }
