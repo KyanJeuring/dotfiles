@@ -38,6 +38,11 @@ _abort_reset() {
   ok "Operation aborted"
 }
 
+_branch_exists() {
+  git show-ref --verify --quiet "refs/heads/$1" ||
+  git show-ref --verify --quiet "refs/remotes/origin/$1"
+}
+
 # ==================================================
 # Git helpers
 # ==================================================
@@ -655,6 +660,20 @@ promote() {
 
   if [[ "$SRC_BRANCH" == "$TARGET_BRANCH" ]]; then
     err "Source and target branches must be different"
+    return 1
+  fi
+
+  if ! _branch_exists "$SRC_BRANCH"; then
+    err "Source branch does not exist: '$SRC_BRANCH'"
+    warn "Available branches:"
+    git branch -a
+    return 1
+  fi
+
+  if ! _branch_exists "$TARGET_BRANCH"; then
+    err "Target branch does not exist: '$TARGET_BRANCH'"
+    warn "Available branches:"
+    git branch -a
     return 1
   fi
 
