@@ -37,13 +37,13 @@ info "This script installs dotfiles using symbolic links"
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BASHRC_SRC="$DOTFILES_DIR/shell/.bashrc"
-BASHRCD_DIR_SRC="$DOTFILES_DIR/shell/bashrc.d"
+BASHRCD_SRC="$DOTFILES_DIR/shell/bashrc.d"
 
 GITCONFIG_SRC="$DOTFILES_DIR/git/.gitconfig"
 GITIGNORE_GLOBAL_SRC="$DOTFILES_DIR/git/.gitignore_global"
 
 BASHRC_DEST="$HOME/.bashrc"
-BASHRCD_DIR_DEST="$HOME/.bashrc.d"
+BASHRCD_DEST="$HOME/.bashrc.d"
 
 GITCONFIG_DEST="$HOME/.gitconfig"
 GITIGNORE_GLOBAL_DEST="$HOME/.gitignore_global"
@@ -61,22 +61,15 @@ is_windows() {
 }
 
 # ==================================================
-# Helpers
+# Backup & cleanup helpers
 # ==================================================
 
 backup_real_file() {
   local target="$1"
 
-  # Only back up regular files (not symlinks, not dirs)
   [[ -f "$target" && ! -L "$target" ]] || return 0
 
-  # Skip backup if file already points to dotfiles repo
-  if grep -q "$DOTFILES_DIR" "$target" 2>/dev/null; then
-    return 0
-  fi
-
   local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
-
   mv "$target" "$backup" || {
     warn "Failed to back up $target (skipping)"
     return 0
@@ -84,6 +77,17 @@ backup_real_file() {
 
   warn "Existing $(basename "$target") backed up"
   info "Backup created at: $(basename "$backup")"
+}
+
+remove_existing_dir() {
+  local target="$1"
+
+  if [[ -d "$target" && ! -L "$target" ]]; then
+    local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
+    mv "$target" "$backup"
+    warn "Existing directory $(basename "$target") backed up"
+    info "Backup created at: $(basename "$backup")"
+  fi
 }
 
 remove_wrong_symlink() {
@@ -100,20 +104,26 @@ remove_wrong_symlink() {
   fi
 }
 
+# ==================================================
+# Install helpers
+# ==================================================
+
 install_symlink() {
   local src="$1"
   local dest="$2"
   local name="$3"
 
+  # Directories must be handled explicitly
+  remove_existing_dir "$dest"
+
+  # Files / symlinks
   backup_real_file "$dest"
   remove_wrong_symlink "$dest" "$src"
 
-  # Git Bash / MSYS2 → native ln (no admin, no hang)
   if is_git_bash; then
     info "Installing $name (Git Bash)"
-    ln -sfn "$src" "$dest"
+    ln -s "$src" "$dest"
 
-  # Native Windows shells → mklink
   elif is_windows; then
     info "Installing $name (Windows)"
     if ! cmd.exe /c mklink "$(cygpath -w "$dest")" "$(cygpath -w "$src")" >nul 2>&1; then
@@ -121,10 +131,9 @@ install_symlink() {
       cp -r "$src" "$dest"
     fi
 
-  # Unix / Linux / macOS
   else
     info "Installing $name (Unix)"
-    ln -sfn "$src" "$dest"
+    ln -s "$src" "$dest"
   fi
 
   ok "$name installed"
@@ -135,7 +144,7 @@ install_symlink() {
 # ==================================================
 
 [[ -f "$BASHRC_SRC" ]] || { err "Missing bashrc source"; exit 1; }
-[[ -d "$BASHRCD_DIR_SRC" ]] || { err "Missing bashrc.d directory"; exit 1; }
+[[ -d "$BASHRCD_SRC" ]] || { err "Missing bashrc.d directory"; exit 1; }
 [[ -f "$GITCONFIG_SRC" ]] || { err "Missing gitconfig source"; exit 1; }
 [[ -f "$GITIGNORE_GLOBAL_SRC" ]] || { err "Missing gitignore_global source"; exit 1; }
 
@@ -148,11 +157,11 @@ info "Dotfiles directory: $DOTFILES_DIR"
 log
 
 install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
-install_symlink "$BASHRCD_DIR_SRC" "$BASHRCD_DIR_DEST" "bashrc.d"
+install_symlink "$BASHRCD_SRC" "$BASHRCD_DEST" "bashrc.d"
 install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
 install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
 
-# Configure git to use global gitignore (OS-correct path)
+# Configure git to use global gitignore
 git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
 ok "Git configured to use global gitignore"
 
