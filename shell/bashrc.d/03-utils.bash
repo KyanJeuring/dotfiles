@@ -87,8 +87,3 @@ dotfiles-update() {
     return 1
   }
 }
-
-confirm() {
-  read -rp "$1 (y/N): " ans
-  [[ "$ans" =~ ^[Yy]$ ]]
-}
