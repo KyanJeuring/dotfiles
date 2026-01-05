@@ -48,6 +48,46 @@ bashrc() {
   '
 }
 
+## Update dotfiles repository and reload bashrc
+dotfiles-update() {
+  local repo_dir install_script
+
+  repo_dir="$HOME/dotfiles"
+  install_script="$repo_dir/install.sh"
+
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    err "Dotfiles repository not found at $repo_dir"
+    err "Run the bootstrap installer first"
+    return 1
+  fi
+
+  info "Updating dotfiles repository"
+  info "Repo: $repo_dir"  
+
+  (
+    cd "$repo_dir"
+    git pull --ff-only
+  ) || {
+    err "Git pull failed"
+    return 1
+  }
+
+  if [[ ! -f "$install_script" ]]; then
+    err "install.sh not found in dotfiles repository"
+    return 1
+  fi
+
+  if [[ ! -x "$install_script" ]]; then
+    chmod +x "$install_script"
+  fi
+
+  info "Running install.sh"
+  "$install_script" || {
+    err "install.sh failed"
+    return 1
+  }
+}
+
 confirm() {
   read -rp "$1 (y/N): " ans
   [[ "$ans" =~ ^[Yy]$ ]]
