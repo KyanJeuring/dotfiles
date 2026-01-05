@@ -16,10 +16,15 @@ bashrc() {
   log
 
   awk '
+    FNR == 1 {
+      section = ""
+    }
+
     /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
       section = substr($0, 3)
       next
     }
+
     /^## / {
       desc = substr($0, 4)
       getline
@@ -29,7 +34,7 @@ bashrc() {
         printf "[%s]\n%-22s %s\n", section, name, desc
       }
     }
-  ' "${BASH_SOURCE[${#BASH_SOURCE[@]}-1]}" |
+  ' "$HOME/.bashrc.d/"*.bash |
   awk '
     /^\[/ {
       if ($0 != last) {
@@ -41,20 +46,6 @@ bashrc() {
     }
     { print "  " $0 }
   '
-}
-
-## Update dotfiles repository and reload bashrc
-dotfiles-update() {
-  local repo_dir="$HOME/dotfiles"
-  local install_script="$repo_dir/install.sh"
-
-  [[ -d "$repo_dir/.git" ]] || { err "Dotfiles repo not found"; return 1; }
-
-  info "Updating dotfiles repository"
-  (cd "$repo_dir" && git pull --ff-only) || return 1
-
-  [[ -x "$install_script" ]] || chmod +x "$install_script"
-  "$install_script"
 }
 
 confirm() {
