@@ -22,7 +22,6 @@
     pager = less
     autocrlf = input
     whitespace = trailing-space,space-before-tab
-	excludesfile = C:/Users/Kyanj/.gitignore_global
 
 # ==================================================
 # Repository initialization

@@ -37,20 +37,32 @@ info "This script installs dotfiles using symbolic links"
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BASHRC_SRC="$DOTFILES_DIR/shell/.bashrc"
+BASHRCD_DIR_SRC="$DOTFILES_DIR/shell/bashrc.d"
+
 GITCONFIG_SRC="$DOTFILES_DIR/git/.gitconfig"
 GITIGNORE_GLOBAL_SRC="$DOTFILES_DIR/git/.gitignore_global"
 
 BASHRC_DEST="$HOME/.bashrc"
+BASHRCD_DIR_DEST="$HOME/.bashrc.d"
+
 GITCONFIG_DEST="$HOME/.gitconfig"
 GITIGNORE_GLOBAL_DEST="$HOME/.gitignore_global"
 
 # ==================================================
-# Helpers
+# Platform detection
 # ==================================================
+
+is_git_bash() {
+  [[ -n "${MSYSTEM:-}" ]]
+}
 
 is_windows() {
   [[ "${OS:-}" == "Windows_NT" ]] || grep -qi microsoft /proc/version 2>/dev/null
 }
+
+# ==================================================
+# Helpers
+# ==================================================
 
 backup_real_file() {
   local target="$1"
@@ -85,12 +97,23 @@ install_symlink() {
   backup_real_file "$dest"
   remove_wrong_symlink "$dest" "$src"
 
-  if is_windows; then
+  # Git Bash / MSYS2 → native ln (no admin, no hang)
+  if is_git_bash; then
+    info "Installing $name (Git Bash)"
+    ln -sfn "$src" "$dest"
+
+  # Native Windows shells → mklink
+  elif is_windows; then
     info "Installing $name (Windows)"
-    cmd.exe /c mklink "$(cygpath -w "$dest")" "$(cygpath -w "$src")" >nul
+    if ! cmd.exe /c mklink "$(cygpath -w "$dest")" "$(cygpath -w "$src")" >nul 2>&1; then
+      warn "mklink failed, copying instead"
+      cp -r "$src" "$dest"
+    fi
+
+  # Unix / Linux / macOS
   else
     info "Installing $name (Unix)"
-    ln -sf "$src" "$dest"
+    ln -sfn "$src" "$dest"
   fi
 
   ok "$name installed"
@@ -101,6 +124,7 @@ install_symlink() {
 # ==================================================
 
 [[ -f "$BASHRC_SRC" ]] || { err "Missing bashrc source"; exit 1; }
+[[ -d "$BASHRCD_DIR_SRC" ]] || { err "Missing bashrc.d directory"; exit 1; }
 [[ -f "$GITCONFIG_SRC" ]] || { err "Missing gitconfig source"; exit 1; }
 [[ -f "$GITIGNORE_GLOBAL_SRC" ]] || { err "Missing gitignore_global source"; exit 1; }
 
@@ -113,10 +137,11 @@ info "Dotfiles directory: $DOTFILES_DIR"
 log
 
 install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
+install_symlink "$BASHRCD_DIR_SRC" "$BASHRCD_DIR_DEST" "bashrc.d"
 install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
 install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
 
-# Configure git to use global gitignore
+# Configure git to use global gitignore (OS-correct path)
 git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
 ok "Git configured to use global gitignore"
 
