@@ -15,6 +15,12 @@ bashrc() {
   info "Custom bash commands"
   log
 
+  shopt -s nullglob
+  local files=("$HOME/.bashrc.d"/*.sh)
+  shopt -u nullglob
+
+  ((${#files[@]})) || return
+
   awk '
     FNR == 1 {
       section = ""
@@ -34,7 +40,7 @@ bashrc() {
         printf "[%s]\n%-22s %s\n", section, name, desc
       }
     }
-  ' "$HOME/.bashrc.d/"*.bash |
+  ' "${files[@]}" |
   awk '
     /^\[/ {
       if ($0 != last) {
