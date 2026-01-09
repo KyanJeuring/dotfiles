@@ -123,3 +123,30 @@ end, { silent = true })
 
 -- Esc exits terminal insert mode
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
+
+-- ==================================================
+-- Git graph sidebar (only in git repos)
+-- ==================================================
+
+local git_graph_win = nil
+
+vim.keymap.set("n", "<leader>gg", function()
+  -- Close if already open
+  if git_graph_win and vim.api.nvim_win_is_valid(git_graph_win) then
+    vim.api.nvim_win_close(git_graph_win, true)
+    git_graph_win = nil
+    return
+  end
+
+  -- Only open inside git repo
+  if vim.fn.finddir(".git", ".;") == "" then
+    vim.notify("Not a git repository", vim.log.levels.INFO)
+    return
+  end
+
+  vim.cmd("vertical Glog --graph --oneline --decorate --all")
+  git_graph_win = vim.api.nvim_get_current_win()
+
+  vim.cmd("setlocal nowrap")
+  vim.cmd("setlocal nonumber norelativenumber")
+end, { silent = true })
