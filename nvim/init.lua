@@ -128,7 +128,7 @@ vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 -- Git graph sidebar
 -- ==================================================
 
-local GIT_GRAPH_WIDTH = 20
+local GIT_GRAPH_WIDTH = 30
 local git_graph_win = nil
 
 local function is_git_repo()
