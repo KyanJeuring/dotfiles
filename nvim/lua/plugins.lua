@@ -29,15 +29,12 @@ require("lazy").setup({
 
     config = function()
       require("nvim-tree").setup({
-
-        -- Tree layout
         view = {
           width = 30,
         },
-
-        -- Rendering (performance-optimized)
         renderer = {
           group_empty = true,
+          add_trailing = true,
           indent_markers = {
             enable = false,
           },
@@ -50,24 +47,16 @@ require("lazy").setup({
             },
           },
         },
-
         filters = {
           dotfiles = false,
         },
-
-        -- ❌ Disable expensive sync behavior
         update_focused_file = {
           enable = false,
         },
-
         sync_root_with_cwd = false,
-
-        -- ❌ Disable git integration (major lag source)
         git = {
           enable = false,
         },
-
-        -- ✅ Enable filesystem watcher (updates on mkdir/touch)
         filesystem_watchers = {
           enable = true,
         },
