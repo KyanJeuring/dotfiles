@@ -33,14 +33,20 @@ require("plugins")
 local term_win = nil
 
 vim.keymap.set("n", "<leader>t", function()
-  -- If terminal window exists → close (kill) it
+  -- If terminal window exists → close it
   if term_win and vim.api.nvim_win_is_valid(term_win) then
     vim.api.nvim_win_close(term_win, true)
     term_win = nil
     return
   end
 
-  -- Otherwise create terminal
+  -- If we're in nvim-tree, move to the file window first
+  local ft = vim.bo.filetype
+  if ft == "NvimTree" then
+    vim.cmd("wincmd l") -- move to right-hand (file) window
+  end
+
+  -- Open terminal below the file window
   vim.cmd("belowright split")
   vim.cmd("resize 15")
   vim.cmd("terminal")
@@ -50,6 +56,9 @@ vim.keymap.set("n", "<leader>t", function()
   -- Enter insert mode immediately
   vim.cmd("startinsert")
 end, { silent = true })
+
+-- Esc exits terminal insert mode
+vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
 -- Terminal behavior
