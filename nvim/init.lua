@@ -34,6 +34,19 @@ vim.g.maplocalleader = " "
 require("plugins")
 
 -- ==================================================
+-- nvim-tree color overrides (orange)
+-- ==================================================
+
+local orange = "#ff7500" -- you can tweak this later
+
+vim.api.nvim_set_hl(0, "NvimTreeFolderName", { fg = orange })
+vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = orange, bold = true })
+vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName", { fg = orange })
+vim.api.nvim_set_hl(0, "NvimTreeRootFolder", { fg = orange, bold = true })
+vim.api.nvim_set_hl(0, "NvimTreeIndentMarker", { fg = orange })
+
+
+-- ==================================================
 -- Terminal toggle (single instance)
 -- ==================================================
 
