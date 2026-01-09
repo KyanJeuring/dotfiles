@@ -160,6 +160,9 @@ info "Installing dotfiles"
 info "Dotfiles directory: $DOTFILES_DIR"
 log
 
+# Ensure XDG config directory exists
+mkdir -p "$HOME/.config"
+
 install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
 install_symlink "$BASHRCD_SRC" "$BASHRCD_DEST" "bashrc.d"
 install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
