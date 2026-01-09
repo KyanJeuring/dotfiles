@@ -92,27 +92,41 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 -- ==================================================
--- Terminal toggle with SAFE fullscreen
+-- Terminal toggle (single instance)
 -- ==================================================
 
 local term_buf = nil
 local term_win = nil
-local term_fullscreen = false
-local saved_view = nil
+local term_expanded = false
+
+local SMALL_HEIGHT = 15
+local EXPAND_RATIO = 0.6
+
+-- Helper: find terminal window
+local function find_term_win()
+  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
+    return nil
+  end
+
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == term_buf then
+      return win
+    end
+  end
+
+  return nil
+end
 
 -- Open / close terminal
 vim.keymap.set("n", "<leader>t", function()
-  -- Close terminal
-  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
-    if term_fullscreen then
-      vim.cmd("wincmd =")
-      term_fullscreen = false
-    end
+  local win = find_term_win()
 
+  -- Close terminal
+  if win then
     vim.api.nvim_buf_delete(term_buf, { force = true })
     term_buf = nil
     term_win = nil
-    saved_view = nil
+    term_expanded = false
     return
   end
 
@@ -122,45 +136,45 @@ vim.keymap.set("n", "<leader>t", function()
   end
 
   vim.cmd("belowright split")
-  vim.cmd("resize 15")
+  vim.cmd("resize " .. SMALL_HEIGHT)
   vim.cmd("terminal")
 
-  term_win = vim.api.nvim_get_current_win()
   term_buf = vim.api.nvim_get_current_buf()
-  term_fullscreen = false
+  term_win = vim.api.nvim_get_current_win()
+  term_expanded = false
 
   vim.cmd("startinsert")
 end, { silent = true })
 
--- Toggle fullscreen (maximize split)
-local function toggle_terminal_fullscreen()
-  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
+-- Toggle terminal height
+local function toggle_terminal_height()
+  local win = find_term_win()
+  if not win then
     return
   end
 
-  if not term_fullscreen then
-    -- Save view & maximize
-    saved_view = vim.fn.winsaveview()
-    vim.cmd("wincmd |")
-    vim.cmd("wincmd _")
-    term_fullscreen = true
+  vim.api.nvim_set_current_win(win)
+
+  if not term_expanded then
+    -- Expand
+    local total_lines = vim.o.lines
+    local target = math.floor(total_lines * EXPAND_RATIO)
+    vim.api.nvim_win_set_height(win, target)
+    term_expanded = true
   else
-    -- Restore layout
-    vim.cmd("wincmd =")
-    if saved_view then
-      vim.fn.winrestview(saved_view)
-    end
-    term_fullscreen = false
+    -- Shrink
+    vim.api.nvim_win_set_height(win, SMALL_HEIGHT)
+    term_expanded = false
   end
 end
 
 -- Normal mode
-vim.keymap.set("n", "<leader>T", toggle_terminal_fullscreen, { silent = true })
+vim.keymap.set("n", "<leader>T", toggle_terminal_height, { silent = true })
 
 -- Terminal mode
 vim.keymap.set("t", "<leader>T", function()
   vim.cmd("stopinsert")
-  toggle_terminal_fullscreen()
+  toggle_terminal_height()
   vim.cmd("startinsert")
 end, { silent = true })
 
