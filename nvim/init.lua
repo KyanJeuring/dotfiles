@@ -125,33 +125,33 @@ end, { silent = true })
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
--- Git graph sidebar (true toggle with <Space> g)
+-- Git graph sidebar
 -- ==================================================
 
-local git_graph = {
-  win = nil,
-  buf = nil,
-}
-
-local GIT_GRAPH_WIDTH = 15
+local GIT_GRAPH_WIDTH = 45
 
 local function is_git_repo()
   return vim.fn.finddir(".git", ".;") ~= ""
 end
 
-local function is_graph_open()
-  return git_graph.win
-    and vim.api.nvim_win_is_valid(git_graph.win)
-    and git_graph.buf
-    and vim.api.nvim_buf_is_valid(git_graph.buf)
+-- Find all git graph windows
+local function find_git_graph_windows()
+  local wins = {}
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.bo[buf].filetype == "gitgraph" then
+      table.insert(wins, win)
+    end
+  end
+  return wins
 end
 
 local function close_git_graph()
-  if is_graph_open() then
-    vim.api.nvim_win_close(git_graph.win, true)
+  for _, win in ipairs(find_git_graph_windows()) do
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_close(win, true)
+    end
   end
-  git_graph.win = nil
-  git_graph.buf = nil
 end
 
 local function open_git_graph()
@@ -160,23 +160,21 @@ local function open_git_graph()
     return
   end
 
+  close_git_graph()
+
   local source_win = vim.api.nvim_get_current_win()
 
   vim.cmd("botright vsplit")
   vim.cmd("vertical resize " .. GIT_GRAPH_WIDTH)
   vim.cmd("setlocal winfixwidth")
 
-  git_graph.win = vim.api.nvim_get_current_win()
-
   vim.cmd("enew")
-  git_graph.buf = vim.api.nvim_get_current_buf()
+  local buf = vim.api.nvim_get_current_buf()
 
-  vim.cmd("Git -c color.ui=always log --graph --oneline --decorate --all")
-
-  vim.bo[git_graph.buf].buflisted = false
-  vim.bo[git_graph.buf].swapfile = false
-  vim.bo[git_graph.buf].modifiable = false
-  vim.bo[git_graph.buf].filetype = "gitgraph"
+  vim.bo[buf].buflisted = false
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].modifiable = false
+  vim.bo[buf].filetype = "gitgraph"
 
   vim.opt_local.wrap = false
   vim.opt_local.number = false
@@ -184,19 +182,22 @@ local function open_git_graph()
   vim.opt_local.signcolumn = "no"
   vim.opt_local.cursorline = false
 
+  -- Run colored git graph
+  vim.cmd("Git -c color.ui=always log --graph --oneline --decorate --all")
+
+  -- Close with q
   vim.keymap.set("n", "q", close_git_graph, {
-    buffer = git_graph.buf,
+    buffer = buf,
     silent = true,
   })
 
-  -- restore focus
-  if vim.api.nvim_win_is_valid(source_win) then
-    vim.api.nvim_set_current_win(source_win)
-  end
+  -- Restore focus
+  vim.api.nvim_set_current_win(source_win)
 end
 
 local function toggle_git_graph()
-  if is_graph_open() then
+  local wins = find_git_graph_windows()
+  if #wins > 0 then
     close_git_graph()
   else
     open_git_graph()
