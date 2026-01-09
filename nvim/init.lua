@@ -100,7 +100,7 @@ local term_win = nil
 local term_expanded = false
 
 local SMALL_HEIGHT = 15
-local EXPAND_RATIO = 1.5
+local EXPAND_RATIO = 1.6
 
 -- Helper: find terminal window
 local function find_term_win()
