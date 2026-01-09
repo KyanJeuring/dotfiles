@@ -45,24 +45,32 @@ require("lazy").setup({
             -- Auto-open tree on startup
             -- ==================================================
 
-            vim.api.nvim_create_autocmd("VimEnter", {
-                callback = function(data)
-                    -- Buffer is a file
-                    local is_file = vim.fn.filereadable(data.file) == 1
-                    -- Buffer is a directory
-                    local is_dir = vim.fn.isdirectory(data.file) == 1
+            local augroup = vim.api.nvim_create_augroup("NvimTreeStartup", { clear = true })
 
-                    if is_dir then
-                    -- Change to the directory and open tree
-                    vim.cmd.cd(data.file)
-                    require("nvim-tree.api").tree.open()
-                    elseif is_file then
-                    -- Open tree but keep focus on file
-                    require("nvim-tree.api").tree.open({ focus = false })
-                    end
-                end,
+            vim.api.nvim_create_autocmd("VimEnter", {
+            group = augroup,
+            callback = function(data)
+                -- Buffer is a file
+                local is_file = vim.fn.filereadable(data.file) == 1
+                -- Buffer is a directory
+                local is_dir = vim.fn.isdirectory(data.file) == 1
+
+                if is_dir then
+                -- Change to the directory and open tree
+                vim.cmd.cd(data.file)
+                require("nvim-tree.api").tree.open()
+                elseif is_file then
+                -- Open tree but keep focus on file
+                require("nvim-tree.api").tree.open({ focus = false })
+                end
+            end,
             })
         end,
     },
 
 })
+
+-- Focus tree window
+vim.keymap.set("n", "<leader>f", function()
+  require("nvim-tree.api").tree.focus()
+end, { silent = true })
