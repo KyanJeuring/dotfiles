@@ -48,6 +48,9 @@ BASHRCD_DEST="$HOME/.bashrc.d"
 GITCONFIG_DEST="$HOME/.gitconfig"
 GITIGNORE_GLOBAL_DEST="$HOME/.gitignore_global"
 
+NVIM_SRC="$DOTFILES_DIR/nvim"
+NVIM_DEST="$HOME/.config/nvim"
+
 # ==================================================
 # Platform detection
 # ==================================================
@@ -147,6 +150,7 @@ install_symlink() {
 [[ -d "$BASHRCD_SRC" ]] || { err "Missing bashrc.d directory"; exit 1; }
 [[ -f "$GITCONFIG_SRC" ]] || { err "Missing gitconfig source"; exit 1; }
 [[ -f "$GITIGNORE_GLOBAL_SRC" ]] || { err "Missing gitignore_global source"; exit 1; }
+[[ -d "$NVIM_SRC" ]] || { err "Missing nvim config directory"; exit 1; }
 
 # ==================================================
 # Install dotfiles
@@ -160,6 +164,7 @@ install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
 install_symlink "$BASHRCD_SRC" "$BASHRCD_DEST" "bashrc.d"
 install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
 install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
+install_symlink "$NVIM_SRC" "$NVIM_DEST" "neovim config"
 
 # Configure git to use global gitignore
 git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
