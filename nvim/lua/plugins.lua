@@ -22,7 +22,7 @@ vim.opt.rtp:prepend(lazypath)
 -- ==================================================
 
 require("lazy").setup({
-  
+
   -- ==================================================
   -- Theme
   -- ==================================================
@@ -50,7 +50,6 @@ require("lazy").setup({
           group_empty = true,
           add_trailing = true,
           highlight_opened_files = "name",
-
           indent_markers = {
             enable = false,
           },
@@ -63,12 +62,12 @@ require("lazy").setup({
             },
           },
         },
-        filters = {
-          dotfiles = false,
-        },
         update_focused_file = {
           enable = true,
           update_root = false,
+        },
+        filters = {
+          dotfiles = false,
         },
         sync_root_with_cwd = false,
         git = {
@@ -79,40 +78,13 @@ require("lazy").setup({
         },
       })
 
-      -- =================================================
       -- Keymaps
-      -- =================================================
-
-      -- Toggle tree
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
-
-      -- Focus tree
       vim.keymap.set("n", "<leader>f", function()
         require("nvim-tree.api").tree.focus()
       end, { silent = true })
 
-      local augroup =
-        vim.api.nvim_create_augroup("NvimTreeStartup", { clear = true })
-
-      vim.api.nvim_create_autocmd("VimEnter", {
-        group = augroup,
-        callback = function(data)
-          local is_file = vim.fn.filereadable(data.file) == 1
-          local is_dir = vim.fn.isdirectory(data.file) == 1
-
-          if is_dir then
-            vim.cmd.cd(data.file)
-            require("nvim-tree.api").tree.open()
-          elseif is_file then
-            require("nvim-tree.api").tree.open({ focus = false })
-          end
-        end,
-      })
-
-      -- =================================================
-      -- UI tweaks
-      -- =================================================
-
+      -- Performance tweaks
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "NvimTree",
         callback = function()
