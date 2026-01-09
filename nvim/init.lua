@@ -32,7 +32,7 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 require("plugins")
-vim.g.tokyonight_style = "night"   -- options: storm | night | day
+vim.g.tokyonight_style = "storm"   -- options: storm | night | day
 vim.cmd.colorscheme("tokyonight")
 
 
