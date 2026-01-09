@@ -134,21 +134,11 @@ local function is_git_repo()
   return vim.fn.finddir(".git", ".;") ~= ""
 end
 
--- Find all git graph windows
-local function find_git_graph_windows()
-  local wins = {}
+-- Close all git graph windows
+local function close_git_graph()
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
     if vim.bo[buf].filetype == "gitgraph" then
-      table.insert(wins, win)
-    end
-  end
-  return wins
-end
-
-local function close_git_graph()
-  for _, win in ipairs(find_git_graph_windows()) do
-    if vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_win_close(win, true)
     end
   end
@@ -160,20 +150,27 @@ local function open_git_graph()
     return
   end
 
+  -- Close any existing graph + stray splits
   close_git_graph()
 
   local source_win = vim.api.nvim_get_current_win()
 
+  -- Create RIGHT column
   vim.cmd("botright vsplit")
   vim.cmd("vertical resize " .. GIT_GRAPH_WIDTH)
-  vim.cmd("setlocal winfixwidth")
+  vim.cmd("setlocal winfixwidth winfixheight")
 
+  -- Ensure this column has ONLY ONE window
+  vim.cmd("wincmd |")
+
+  -- Create buffer
   vim.cmd("enew")
   local buf = vim.api.nvim_get_current_buf()
 
   vim.bo[buf].buflisted = false
   vim.bo[buf].swapfile = false
   vim.bo[buf].modifiable = false
+  vim.bo[buf].buftype = "nofile"
   vim.bo[buf].filetype = "gitgraph"
 
   vim.opt_local.wrap = false
@@ -182,8 +179,8 @@ local function open_git_graph()
   vim.opt_local.signcolumn = "no"
   vim.opt_local.cursorline = false
 
-  -- Run colored git graph
-  vim.cmd("Git -c color.ui=always log --graph --oneline --decorate --all")
+  -- Run git graph (no pager, forced color)
+  vim.cmd("Git --no-pager -c color.ui=always log --graph --oneline --decorate --all")
 
   -- Close with q
   vim.keymap.set("n", "q", close_git_graph, {
@@ -196,12 +193,14 @@ local function open_git_graph()
 end
 
 local function toggle_git_graph()
-  local wins = find_git_graph_windows()
-  if #wins > 0 then
-    close_git_graph()
-  else
-    open_git_graph()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.bo[buf].filetype == "gitgraph" then
+      close_git_graph()
+      return
+    end
   end
+  open_git_graph()
 end
 
 vim.keymap.set("n", "<leader>g", toggle_git_graph, { silent = true })
