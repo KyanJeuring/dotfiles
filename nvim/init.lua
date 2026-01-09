@@ -92,20 +92,35 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 -- ==================================================
--- Terminal toggle with safe fullscreen support
+-- Terminal toggle with proper fullscreen toggle
 -- ==================================================
 
-local term_win = nil
 local term_buf = nil
 local term_fullscreen = false
 local saved_winrestcmd = nil
 
+-- Helper: find window displaying terminal buffer
+local function find_term_win()
+  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
+    return nil
+  end
+
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == term_buf then
+      return win
+    end
+  end
+
+  return nil
+end
+
 -- Open / close terminal (split)
 vim.keymap.set("n", "<leader>t", function()
-  -- Close terminal if it exists
-  if term_win and vim.api.nvim_win_is_valid(term_win) then
-    vim.api.nvim_win_close(term_win, true)
-    term_win = nil
+  local win = find_term_win()
+
+  -- Close terminal if open
+  if win then
+    vim.api.nvim_win_close(win, true)
     term_buf = nil
     term_fullscreen = false
     saved_winrestcmd = nil
@@ -122,24 +137,23 @@ vim.keymap.set("n", "<leader>t", function()
   vim.cmd("resize 15")
   vim.cmd("terminal")
 
-  term_win = vim.api.nvim_get_current_win()
   term_buf = vim.api.nvim_get_current_buf()
   term_fullscreen = false
 
   vim.cmd("startinsert")
 end, { silent = true })
 
--- Toggle fullscreen (ONLY if terminal is open)
+-- Toggle fullscreen (only if terminal exists)
 local function toggle_terminal_fullscreen()
-  -- Terminal must exist and be valid
-  if not term_win or not vim.api.nvim_win_is_valid(term_win) then
+  local win = find_term_win()
+  if not win then
     return
   end
 
   if not term_fullscreen then
-    -- Save layout and go fullscreen
+    -- Go fullscreen
     saved_winrestcmd = vim.fn.winrestcmd()
-    vim.api.nvim_set_current_win(term_win)
+    vim.api.nvim_set_current_win(win)
     vim.cmd("only")
     term_fullscreen = true
   else
@@ -151,10 +165,10 @@ local function toggle_terminal_fullscreen()
   end
 end
 
--- Normal mode fullscreen toggle
+-- Normal mode toggle
 vim.keymap.set("n", "<leader>T", toggle_terminal_fullscreen, { silent = true })
 
--- Terminal mode fullscreen toggle
+-- Terminal mode toggle
 vim.keymap.set("t", "<leader>T", function()
   vim.cmd("stopinsert")
   toggle_terminal_fullscreen()
