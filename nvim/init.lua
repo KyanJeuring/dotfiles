@@ -158,7 +158,7 @@ local function open_git_graph()
   git_graph_win = vim.api.nvim_get_current_win()
 
   -- Open terminal with git graph
-  vim.cmd("terminal git --no-pager log --graph --oneline --decorate --all | less -S")
+  vim.cmd("terminal git --no-pager log --graph --oneline --decorate --all | less -SR")
   vim.cmd("setlocal nowrap")
   vim.cmd("setlocal sidescroll=1")
   vim.cmd("setlocal sidescrolloff=0")
