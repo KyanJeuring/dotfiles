@@ -32,34 +32,39 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 require("plugins")
+vim.cmd.colorscheme("gruvbox-material")
+
 
 -- ==================================================
--- nvim-tree color overrides (orange)
+-- nvim-tree color overrides
 -- ==================================================
 
 local ORANGE = "#ff7500"
 local WHITE  = "#ffffff"
 
--- Folders
-vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
-vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
-vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
-vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
+local function set_tree_colors()
+  -- Folders
+  vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
+  vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
+  vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
+  vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
+  vim.api.nvim_set_hl(0, "NvimTreeSymlinkFolderName",{ fg = ORANGE })
 
--- Symlinked folders (this is where cyan comes from)
-vim.api.nvim_set_hl(0, "NvimTreeFolderIcon",       { fg = ORANGE })
-vim.api.nvim_set_hl(0, "NvimTreeSymlinkFolderName",{ fg = ORANGE })
+  -- Files
+  vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
+  vim.api.nvim_set_hl(0, "NvimTreeExecFile",         { fg = WHITE })
+  vim.api.nvim_set_hl(0, "NvimTreeSpecialFile",      { fg = WHITE })
+  vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
 
--- Files
-vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
-vim.api.nvim_set_hl(0, "NvimTreeExecFile",         { fg = WHITE })
-vim.api.nvim_set_hl(0, "NvimTreeSpecialFile",      { fg = WHITE })
+  -- Indent markers / arrows
+  vim.api.nvim_set_hl(0, "NvimTreeIndentMarker",     { fg = ORANGE })
+end
 
--- Symlinked files
-vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
+set_tree_colors()
 
--- Indent / arrows (if any remain)
-vim.api.nvim_set_hl(0, "NvimTreeIndentMarker",     { fg = ORANGE })
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_tree_colors,
+})
 
 
 -- ==================================================

@@ -23,6 +23,26 @@ vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
 
+  -- ==================================================
+  -- Theme
+  -- ==================================================
+
+  {
+    "sainnhe/gruvbox-material",
+    lazy = false,      -- load immediately
+    priority = 1000,   -- load before other plugins
+    config = function()
+      vim.g.gruvbox_material_background = "medium"
+      vim.g.gruvbox_material_foreground = "mix"
+      vim.g.gruvbox_material_enable_italic = false
+      vim.g.gruvbox_material_ui_contrast = "low"
+    end,
+  },
+
+  -- ==================================================
+  -- File tree
+  -- ==================================================
+
   {
     "nvim-tree/nvim-tree.lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
@@ -62,10 +82,6 @@ require("lazy").setup({
         },
       })
 
-      -- ==================================================
-      -- Keymaps
-      -- ==================================================
-
       -- Toggle tree
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
 
@@ -74,10 +90,7 @@ require("lazy").setup({
         require("nvim-tree.api").tree.focus()
       end, { silent = true })
 
-      -- ==================================================
       -- Auto-open tree on startup
-      -- ==================================================
-
       local augroup =
         vim.api.nvim_create_augroup("NvimTreeStartup", { clear = true })
 
@@ -96,10 +109,7 @@ require("lazy").setup({
         end,
       })
 
-      -- ==================================================
       -- Tree window performance tweaks
-      -- ==================================================
-
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "NvimTree",
         callback = function()
