@@ -128,30 +128,18 @@ vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 -- Git graph sidebar
 -- ==================================================
 
-local GIT_GRAPH_WIDTH = 45
+local GIT_GRAPH_WIDTH = 20
+local git_graph_win = nil
 
 local function is_git_repo()
   return vim.fn.finddir(".git", ".;") ~= ""
 end
 
--- Find all git graph windows
-local function find_git_graph_windows()
-  local wins = {}
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    local buf = vim.api.nvim_win_get_buf(win)
-    if vim.bo[buf].filetype == "gitgraph" then
-      table.insert(wins, win)
-    end
-  end
-  return wins
-end
-
 local function close_git_graph()
-  for _, win in ipairs(find_git_graph_windows()) do
-    if vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_close(win, true)
-    end
+  if git_graph_win and vim.api.nvim_win_is_valid(git_graph_win) then
+    vim.api.nvim_win_close(git_graph_win, true)
   end
+  git_graph_win = nil
 end
 
 local function open_git_graph()
@@ -160,35 +148,31 @@ local function open_git_graph()
     return
   end
 
-  close_git_graph()
-
   local source_win = vim.api.nvim_get_current_win()
 
+  -- Open right sidebar
   vim.cmd("botright vsplit")
   vim.cmd("vertical resize " .. GIT_GRAPH_WIDTH)
   vim.cmd("setlocal winfixwidth")
 
-  vim.cmd("enew")
-  local buf = vim.api.nvim_get_current_buf()
+  git_graph_win = vim.api.nvim_get_current_win()
 
-  vim.bo[buf].buflisted = false
-  vim.bo[buf].swapfile = false
-  vim.bo[buf].modifiable = false
-  vim.bo[buf].filetype = "gitgraph"
+  -- Open terminal with git graph
+  vim.cmd("terminal git --no-pager log --graph --oneline --decorate --all")
 
-  vim.opt_local.wrap = false
+  -- Sidebar behavior
   vim.opt_local.number = false
   vim.opt_local.relativenumber = false
   vim.opt_local.signcolumn = "no"
   vim.opt_local.cursorline = false
+  vim.opt_local.wrap = false
 
-  -- Run colored git graph
-  vim.cmd("Git! -c color.ui=always log --graph --oneline --decorate --all")
-
+  -- Disable insert mode immediately
+  vim.cmd("stopinsert")
 
   -- Close with q
   vim.keymap.set("n", "q", close_git_graph, {
-    buffer = buf,
+    buffer = vim.api.nvim_get_current_buf(),
     silent = true,
   })
 
@@ -197,8 +181,7 @@ local function open_git_graph()
 end
 
 local function toggle_git_graph()
-  local wins = find_git_graph_windows()
-  if #wins > 0 then
+  if git_graph_win and vim.api.nvim_win_is_valid(git_graph_win) then
     close_git_graph()
   else
     open_git_graph()
