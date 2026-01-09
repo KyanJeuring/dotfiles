@@ -37,13 +37,29 @@ require("plugins")
 -- nvim-tree color overrides (orange)
 -- ==================================================
 
-local orange = "#ff7500" -- you can tweak this later
+local ORANGE = "#ff7500"
+local WHITE  = "#ffffff"
 
-vim.api.nvim_set_hl(0, "NvimTreeFolderName", { fg = orange })
-vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = orange, bold = true })
-vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName", { fg = orange })
-vim.api.nvim_set_hl(0, "NvimTreeRootFolder", { fg = orange, bold = true })
-vim.api.nvim_set_hl(0, "NvimTreeIndentMarker", { fg = orange })
+-- Folders
+vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
+vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
+vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
+vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
+
+-- Symlinked folders (this is where cyan comes from)
+vim.api.nvim_set_hl(0, "NvimTreeFolderIcon",       { fg = ORANGE })
+vim.api.nvim_set_hl(0, "NvimTreeSymlinkFolderName",{ fg = ORANGE })
+
+-- Files
+vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
+vim.api.nvim_set_hl(0, "NvimTreeExecFile",         { fg = WHITE })
+vim.api.nvim_set_hl(0, "NvimTreeSpecialFile",      { fg = WHITE })
+
+-- Symlinked files
+vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
+
+-- Indent / arrows (if any remain)
+vim.api.nvim_set_hl(0, "NvimTreeIndentMarker",     { fg = ORANGE })
 
 
 -- ==================================================
