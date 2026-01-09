@@ -32,7 +32,8 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 require("plugins")
-vim.cmd.colorscheme("gruvbox-material")
+vim.cmd.colorscheme("material")
+vim.g.material_style = "darker"
 
 
 -- ==================================================

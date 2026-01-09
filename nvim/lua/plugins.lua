@@ -28,15 +28,9 @@ require("lazy").setup({
   -- ==================================================
 
   {
-    "sainnhe/gruvbox-material",
-    lazy = false,      -- load immediately
-    priority = 1000,   -- load before other plugins
-    config = function()
-      vim.g.gruvbox_material_background = "medium"
-      vim.g.gruvbox_material_foreground = "mix"
-      vim.g.gruvbox_material_enable_italic = false
-      vim.g.gruvbox_material_ui_contrast = "low"
-    end,
+    "marko-cerovac/material.nvim",
+    lazy = false,
+    priority = 1000,
   },
 
   -- ==================================================
