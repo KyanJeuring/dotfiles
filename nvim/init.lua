@@ -25,3 +25,28 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 require("plugins")
+
+-- ==================================================
+-- Terminal toggle (single instance)
+-- ==================================================
+
+local term_buf = nil
+local term_win = nil
+
+vim.keymap.set("n", "<leader>t", function()
+  -- If terminal window exists → close it
+  if term_win and vim.api.nvim_win_is_valid(term_win) then
+    vim.api.nvim_win_close(term_win, true)
+    term_win = nil
+    term_buf = nil
+    return
+  end
+
+  -- Otherwise create a new terminal
+  vim.cmd("split")
+  vim.cmd("resize 15")
+  vim.cmd("terminal")
+
+  term_win = vim.api.nvim_get_current_win()
+  term_buf = vim.api.nvim_get_current_buf()
+end, { silent = true })
