@@ -22,31 +22,60 @@ vim.opt.rtp:prepend(lazypath)
 -- ==================================================
 
 require("lazy").setup({
+
   {
     "nvim-tree/nvim-tree.lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
+
     config = function()
       require("nvim-tree").setup({
+
+        -- Tree layout
         view = {
           width = 30,
         },
+
+        -- Rendering (performance-optimized)
         renderer = {
           group_empty = true,
+          indent_markers = {
+            enable = false,
+          },
+          icons = {
+            show = {
+              file = false,
+              folder = false,
+              folder_arrow = false,
+              git = false,
+            },
+          },
         },
+
         filters = {
           dotfiles = false,
         },
+
+        -- ❌ Disable expensive sync behavior
         update_focused_file = {
           enable = false,
         },
+
+        sync_root_with_cwd = false,
+
+        -- ❌ Disable git integration (major lag source)
         git = {
-            enable = false,
+          enable = false,
         },
+
+        -- ✅ Enable filesystem watcher (updates on mkdir/touch)
         filesystem_watchers = {
           enable = true,
         },
-        sync_root_with_cwd = false,
       })
+
+      -- ==================================================
+      -- Keymaps
+      -- ==================================================
 
       -- Toggle tree
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
@@ -77,6 +106,19 @@ require("lazy").setup({
           end
         end,
       })
+
+      -- ==================================================
+      -- Tree window performance tweaks
+      -- ==================================================
+
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "NvimTree",
+        callback = function()
+          vim.opt_local.cursorline = false
+          vim.opt_local.signcolumn = "no"
+        end,
+      })
     end,
   },
+
 })
