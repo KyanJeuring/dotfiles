@@ -31,6 +31,9 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 if vim.fn.has("win32") == 1 then
+  vim.env.PATH = vim.env.PATH
+  .. ";C:\\Program Files\\Git\\bin"
+  .. ";C:\\Program Files\\Git\\cmd"
   vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
   vim.opt.shellcmdflag = "-lc"
   vim.opt.shellredir = ">"
