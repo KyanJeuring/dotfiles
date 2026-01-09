@@ -41,7 +41,7 @@ vim.keymap.set("n", "<leader>t", function()
   end
 
   -- Otherwise create terminal
-  vim.cmd("split")
+  vim.cmd("belowright split")
   vim.cmd("resize 15")
   vim.cmd("terminal")
 
