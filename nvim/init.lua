@@ -159,6 +159,10 @@ local function open_git_graph()
 
   -- Open terminal with git graph
   vim.cmd("terminal git --no-pager log --graph --oneline --decorate --all")
+  vim.cmd("setlocal nowrap")
+  vim.cmd("setlocal sidescroll=1")
+  vim.cmd("setlocal sidescrolloff=0")
+
 
   -- Sidebar behavior
   vim.opt_local.number = false
