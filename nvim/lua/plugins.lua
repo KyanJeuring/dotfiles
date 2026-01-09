@@ -36,6 +36,16 @@ require("lazy").setup({
         filters = {
           dotfiles = false,
         },
+        update_focused_file = {
+          enable = false,
+        },
+        git = {
+            enable = false,
+        },
+        filesystem_watchers = {
+          enable = true,
+        },
+        sync_root_with_cwd = false,
       })
 
       -- Toggle tree
