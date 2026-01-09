@@ -49,7 +49,6 @@ require("lazy").setup({
         renderer = {
           group_empty = true,
           add_trailing = true,
-          highlight_opened_files = "name",
           indent_markers = {
             enable = false,
           },
