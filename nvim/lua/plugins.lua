@@ -24,16 +24,6 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
 
   -- ==================================================
-  -- Theme
-  -- ==================================================
-
-  {
-    "navarasu/onedark.nvim",
-    lazy = false,
-    priority = 1000,
-  },
-
-  -- ==================================================
   -- File tree
   -- ==================================================
 
@@ -49,6 +39,8 @@ require("lazy").setup({
         renderer = {
           group_empty = true,
           add_trailing = true,
+          highlight_opened_files = "name",
+
           indent_markers = {
             enable = false,
           },
@@ -76,6 +68,10 @@ require("lazy").setup({
         },
       })
 
+      -- =================================================
+      -- Keymaps
+      -- =================================================
+
       -- Toggle tree
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
 
@@ -84,7 +80,6 @@ require("lazy").setup({
         require("nvim-tree.api").tree.focus()
       end, { silent = true })
 
-      -- Auto-open tree on startup
       local augroup =
         vim.api.nvim_create_augroup("NvimTreeStartup", { clear = true })
 
@@ -103,7 +98,10 @@ require("lazy").setup({
         end,
       })
 
-      -- Tree window performance tweaks
+      -- =================================================
+      -- UI tweaks
+      -- =================================================
+
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "NvimTree",
         callback = function()
