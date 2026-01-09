@@ -76,9 +76,25 @@ require("lazy").setup({
           enable = true,
         },
       })
+      
+      local function only_nvimtree_open()
+      local wins = vim.api.nvim_list_wins()
+      if #wins ~= 1 then
+        return false
+      end
 
+      local buf = vim.api.nvim_win_get_buf(wins[1])
+      return vim.bo[buf].filetype == "NvimTree"
+      end
+      
       -- Keymaps
-      vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
+      vim.keymap.set("n", "<leader>e", function()
+      if only_nvimtree_open() then
+        return
+      end
+      vim.cmd("NvimTreeToggle")
+      end, { silent = true })
+
       vim.keymap.set("n", "<leader>f", function()
         require("nvim-tree.api").tree.focus()
       end, { silent = true })
