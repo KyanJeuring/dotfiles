@@ -43,7 +43,7 @@ vim.cmd.colorscheme("onedark")
 -- ==================================================
 
 local ORANGE = "#ff7500"
-local WHITE  = "#ffffff"
+local WHITE = "#e6e6e6"
 
 local function set_tree_colors()
   -- onedark re-applies highlights late, so schedule this
