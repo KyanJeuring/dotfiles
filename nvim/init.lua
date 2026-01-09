@@ -16,6 +16,13 @@ vim.opt.signcolumn = "yes"
 vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
+-- Reduce redraw overhead over SSH
+if vim.env.SSH_TTY then
+  vim.opt.mouse = ""
+  vim.opt.lazyredraw = true
+  vim.opt.updatetime = 300
+end
+
 -- Leader key
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
@@ -41,9 +48,8 @@ vim.keymap.set("n", "<leader>t", function()
   end
 
   -- If we're in nvim-tree, move to the file window first
-  local ft = vim.bo.filetype
-  if ft == "NvimTree" then
-    vim.cmd("wincmd l") -- move to right-hand (file) window
+  if vim.bo.filetype == "NvimTree" then
+    vim.cmd("wincmd l")
   end
 
   -- Open terminal below the file window
@@ -59,11 +65,3 @@ end, { silent = true })
 
 -- Esc exits terminal insert mode
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
-
--- ==================================================
--- Terminal behavior
--- ==================================================
-
--- Esc exits terminal insert mode
-vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
-
