@@ -160,7 +160,8 @@ local function toggle_git_graph()
   git_graph_win = vim.api.nvim_get_current_win()
 
   -- Run git graph
-  vim.cmd("Glog --graph --oneline --decorate --all")
+  vim.cmd("Git log --graph --oneline --decorate --all")
+
 
   git_graph_buf = vim.api.nvim_get_current_buf()
 

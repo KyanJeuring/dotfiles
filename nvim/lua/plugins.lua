@@ -54,7 +54,7 @@ require("lazy").setup({
     config = function()
       require("nvim-tree").setup({
         view = {
-          width = 30,
+          width = 15,
         },
         renderer = {
           group_empty = true,
