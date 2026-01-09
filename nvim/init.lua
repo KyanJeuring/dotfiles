@@ -27,6 +27,20 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
 -- ==================================================
+-- Windows shell configuration (Git Bash)
+-- ==================================================
+
+if vim.fn.has("win32") == 1 then
+  vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
+  vim.opt.shellcmdflag = "-lc"
+  vim.opt.shellredir = ">"
+  vim.opt.shellpipe = "2>&1 | tee"
+  vim.opt.shellquote = ""
+  vim.opt.shellxquote = ""
+end
+
+
+-- ==================================================
 -- Plugins
 -- ==================================================
 
