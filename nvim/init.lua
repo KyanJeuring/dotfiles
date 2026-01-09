@@ -32,7 +32,7 @@ vim.g.maplocalleader = " "
 -- ==================================================
 
 require("plugins")
-vim.cmd.colorscheme("kanagawa")
+vim.cmd.colorscheme("onedark")
 
 -- ==================================================
 -- nvim-tree color overrides
