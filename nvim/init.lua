@@ -125,28 +125,69 @@ end, { silent = true })
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
--- Git graph sidebar (only in git repos)
+-- Git graph sidebar
 -- ==================================================
 
 local git_graph_win = nil
+local git_graph_buf = nil
+local GIT_GRAPH_WIDTH = 45
 
-vim.keymap.set("n", "<leader>gg", function()
-  -- Close if already open
+local function toggle_git_graph()
+  -- If open → close
   if git_graph_win and vim.api.nvim_win_is_valid(git_graph_win) then
     vim.api.nvim_win_close(git_graph_win, true)
     git_graph_win = nil
+    git_graph_buf = nil
     return
   end
 
-  -- Only open inside git repo
+  -- Only open inside a git repo
   if vim.fn.finddir(".git", ".;") == "" then
     vim.notify("Not a git repository", vim.log.levels.INFO)
     return
   end
 
-  vim.cmd("vertical Glog --graph --oneline --decorate --all")
+  -- If focus is in nvim-tree, move to file window first
+  if vim.bo.filetype == "NvimTree" then
+    vim.cmd("wincmd l")
+  end
+
+  -- Open sidebar on the right
+  vim.cmd("topright vertical new")
+  vim.cmd("setlocal winfixwidth")
+  vim.cmd("vertical resize " .. GIT_GRAPH_WIDTH)
+
   git_graph_win = vim.api.nvim_get_current_win()
 
-  vim.cmd("setlocal nowrap")
-  vim.cmd("setlocal nonumber norelativenumber")
-end, { silent = true })
+  -- Run git graph
+  vim.cmd("Glog --graph --oneline --decorate --all")
+
+  git_graph_buf = vim.api.nvim_get_current_buf()
+
+  -- Sidebar behavior
+  vim.bo[git_graph_buf].buflisted = false
+  vim.bo[git_graph_buf].swapfile = false
+  vim.bo[git_graph_buf].filetype = "gitgraph"
+
+  vim.opt_local.wrap = false
+  vim.opt_local.number = false
+  vim.opt_local.relativenumber = false
+  vim.opt_local.signcolumn = "no"
+  vim.opt_local.cursorline = false
+
+  -- Close with q (like tree plugins)
+  vim.keymap.set("n", "q", function()
+    if git_graph_win and vim.api.nvim_win_is_valid(git_graph_win) then
+      vim.api.nvim_win_close(git_graph_win, true)
+      git_graph_win = nil
+      git_graph_buf = nil
+    end
+  end, { buffer = git_graph_buf, silent = true })
+
+  -- Return focus to file window
+  vim.cmd("wincmd l")
+end
+
+-- Keybinding (matches tree mental model)
+vim.keymap.set("n", "<leader>g", toggle_git_graph, { silent = true })
+
