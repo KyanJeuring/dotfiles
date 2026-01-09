@@ -92,49 +92,31 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 -- ==================================================
--- Terminal toggle with SAFE fullscreen support
+-- Terminal toggle with SAFE fullscreen
 -- ==================================================
 
 local term_buf = nil
+local term_win = nil
 local term_fullscreen = false
-local saved_winrestcmd = nil
-
--- Find window showing terminal buffer
-local function find_term_win()
-  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
-    return nil
-  end
-
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_buf(win) == term_buf then
-      return win
-    end
-  end
-
-  return nil
-end
+local saved_view = nil
 
 -- Open / close terminal
 vim.keymap.set("n", "<leader>t", function()
-  local win = find_term_win()
-
-  -- TERMINAL IS OPEN → CLOSE IT
-  if win then
-    if term_fullscreen and saved_winrestcmd then
-      -- Restore layout BEFORE closing
-      vim.cmd(saved_winrestcmd)
+  -- Close terminal
+  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
+    if term_fullscreen then
+      vim.cmd("wincmd =")
+      term_fullscreen = false
     end
 
-    -- Wipe buffer (safe even if it was last window)
     vim.api.nvim_buf_delete(term_buf, { force = true })
-
     term_buf = nil
-    term_fullscreen = false
-    saved_winrestcmd = nil
+    term_win = nil
+    saved_view = nil
     return
   end
 
-  -- TERMINAL IS CLOSED → OPEN IT
+  -- Open terminal
   if vim.bo.filetype == "NvimTree" then
     vim.cmd("wincmd l")
   end
@@ -143,29 +125,30 @@ vim.keymap.set("n", "<leader>t", function()
   vim.cmd("resize 15")
   vim.cmd("terminal")
 
+  term_win = vim.api.nvim_get_current_win()
   term_buf = vim.api.nvim_get_current_buf()
   term_fullscreen = false
 
   vim.cmd("startinsert")
 end, { silent = true })
 
--- Toggle fullscreen
+-- Toggle fullscreen (maximize split)
 local function toggle_terminal_fullscreen()
-  local win = find_term_win()
-  if not win then
+  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
     return
   end
 
   if not term_fullscreen then
-    -- Enter fullscreen
-    saved_winrestcmd = vim.fn.winrestcmd()
-    vim.api.nvim_set_current_win(win)
-    vim.cmd("only")
+    -- Save view & maximize
+    saved_view = vim.fn.winsaveview()
+    vim.cmd("wincmd |")
+    vim.cmd("wincmd _")
     term_fullscreen = true
   else
-    -- Exit fullscreen
-    if saved_winrestcmd then
-      vim.cmd(saved_winrestcmd)
+    -- Restore layout
+    vim.cmd("wincmd =")
+    if saved_view then
+      vim.fn.winrestview(saved_view)
     end
     term_fullscreen = false
   end
