@@ -153,7 +153,7 @@ local function toggle_git_graph()
   end
 
   -- Open sidebar on the right
-  vim.cmd("topright vertical new")
+  vim.cmd("botright  vertical new")
   vim.cmd("setlocal winfixwidth")
   vim.cmd("vertical resize " .. GIT_GRAPH_WIDTH)
 
