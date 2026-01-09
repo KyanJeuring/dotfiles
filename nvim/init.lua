@@ -171,12 +171,5 @@ end
 -- Normal mode
 vim.keymap.set("n", "<leader>T", toggle_terminal_height, { silent = true })
 
--- Terminal mode
-vim.keymap.set("t", "<leader>T", function()
-  vim.cmd("stopinsert")
-  toggle_terminal_height()
-  vim.cmd("startinsert")
-end, { silent = true })
-
 -- Esc exits terminal insert mode
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
