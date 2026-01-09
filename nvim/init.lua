@@ -60,6 +60,7 @@ vim.cmd.colorscheme("onedark")
 -- ==================================================
 
 local ORANGE = "#ff7500"
+local BLUE   = "#61afef"
 local WHITE = "#e6e6e6"
 
 local function set_tree_colors()
@@ -77,6 +78,11 @@ local function set_tree_colors()
     vim.api.nvim_set_hl(0, "NvimTreeExecFile",         { fg = WHITE })
     vim.api.nvim_set_hl(0, "NvimTreeSpecialFile",      { fg = WHITE })
     vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
+
+    vim.api.nvim_set_hl(0, "NvimTreeOpenedFile", {
+      fg = BLUE,
+      bold = true,
+    })
 
     -- Tree UI
     vim.api.nvim_set_hl(0, "NvimTreeIndentMarker",     { fg = ORANGE })
