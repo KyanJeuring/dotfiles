@@ -343,19 +343,32 @@ ga() {
 
 ## Commit staged changes
 gc() {
+  # Nothing to commit
   if git diff --quiet && git diff --cached --quiet; then
     info "Nothing to commit"
     return 0
   fi
 
+  # Stage changes (your existing helper)
   ga || return 1
 
+  # Require at least a subject
   if [[ $# -eq 0 ]]; then
-    git commit && ok "Changes committed"
-  else
-    git commit -m "$*" && ok "Changes committed"
+    err "Commit message required"
+    err "Usage:"
+    err "  gc Subject"
+    err "  gc Subject \\ Body line 1 \\ Body line 2"
   fi
+
+  # Each argument becomes one -m paragraph
+  local args=()
+  for arg in "$@"; do
+    args+=("-m" "$arg")
+  done
+
+  git commit "${args[@]}" && ok "Changes committed"
 }
+
 
 ## Restore unstaged changes
 gr() {
