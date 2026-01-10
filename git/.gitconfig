@@ -4,6 +4,7 @@
 [user]
     name = Kyan Jeuring
     email = kyanjeuring@gmail.com
+    useConfigOnly = true
 
 # ==================================================
 # Git LFS (required if you use LFS anywhere)
@@ -51,6 +52,7 @@
 [push]
     default = simple
     autoSetupRemote = true
+    followTags = true
 
 # ==================================================
 # Status & log readability
