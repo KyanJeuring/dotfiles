@@ -343,31 +343,59 @@ ga() {
 
 ## Commit staged changes
 gc() {
-  # Nothing to commit
   if git diff --quiet && git diff --cached --quiet; then
     info "Nothing to commit"
     return 0
   fi
 
-  # Stage changes (your existing helper)
   ga || return 1
 
-  # Require at least a subject
   if [[ $# -eq 0 ]]; then
     err "Commit message required"
     err "Usage:"
-    err "  gc Subject"
-    err "  gc Subject \\ Body line 1 \\ Body line 2"
+    err "  gc 'Subjects'"
+    err "  gc 'Subject' 'Next paragraph' 'Another paragraph'"
     return 1
   fi
 
-  # Each argument becomes one -m paragraph
   local args=()
+  args+=("-m" "$1")
+  shift
+
   for arg in "$@"; do
     args+=("-m" "$arg")
   done
 
   git commit "${args[@]}" && ok "Changes committed"
+}
+
+## Amend last commit (message and/or content)
+gca() {
+  if [[ $# -eq 0 ]]; then
+    err "Commit message required"
+    err "Usage:"
+    err "  gca 'New subject'"
+    err "  gca 'New subject' 'Next paragraph' 'Another paragraph'"
+    return 1
+  fi
+
+  local upstream
+  upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)
+
+  if [[ -n "$upstream" ]] && git merge-base --is-ancestor HEAD "$upstream"; then
+    warn "Last commit is already pushed to $upstream"
+    warn "You will need to run:"
+    warn "  git push --force-with-lease"
+    warn "If this is a shared branch, consider making a new commit instead."
+    log
+  fi
+
+  local args=()
+  for arg in "$@"; do
+    args+=("-m" "$arg")
+  done
+
+  git commit --amend "${args[@]}" && ok "Last commit amended"
 }
 
 ## Restore unstaged changes
