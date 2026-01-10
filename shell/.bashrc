@@ -17,9 +17,3 @@ if [[ -d "$BASHRC_D" ]]; then
     [[ -r "$file" ]] && source "$file"
   done
 fi
-
-# If launched from Windows Terminal (not SSH), start in C:
-if [[ -n "$WT_SESSION" && -z "$SSH_CONNECTION" ]]; then
-  cd /mnt/c/users/kyanj
-fi
-
