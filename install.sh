@@ -44,7 +44,7 @@ ask_backup() {
   fi
 
   while true; do
-    printf "%b " "$INFO Create backups of existing files? [Y/n]"
+    printf "%b " "$INFO Create backups of existing files? [y/N]:"
     read -r reply
     case "${reply:-Y}" in
       [Yy]|[Yy][Ee][Ss])
@@ -163,21 +163,8 @@ install_symlink() {
   backup_real_file "$dest"
   remove_wrong_symlink "$dest" "$src"
 
-  if is_git_bash; then
-    info "Installing $name (Git Bash)"
-    ln -sfn "$src" "$dest"
-
-  elif is_windows; then
-    info "Installing $name (Windows)"
-    if ! cmd.exe /c mklink "$(cygpath -w "$dest")" "$(cygpath -w "$src")" >nul 2>&1; then
-      warn "mklink failed, copying instead"
-      cp -r "$src" "$dest"
-    fi
-
-  else
-    info "Installing $name (Unix)"
-    ln -sfn "$src" "$dest"
-  fi
+  info "Installing $name (Unix)"
+  ln -sfn "$src" "$dest"
 
   ok "$name installed"
 }
