@@ -358,6 +358,7 @@ gc() {
     err "Usage:"
     err "  gc Subject"
     err "  gc Subject \\ Body line 1 \\ Body line 2"
+    return 1
   fi
 
   # Each argument becomes one -m paragraph
@@ -368,7 +369,6 @@ gc() {
 
   git commit "${args[@]}" && ok "Changes committed"
 }
-
 
 ## Restore unstaged changes
 gr() {
