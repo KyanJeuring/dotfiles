@@ -55,7 +55,7 @@ bashrc() {
 }
 
 ## Update dotfiles repository and reload bashrc
-dotfiles-update() {
+update-dotfiles() {
   local repo_dir install_script
 
   repo_dir="$HOME/dotfiles"
