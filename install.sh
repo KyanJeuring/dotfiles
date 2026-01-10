@@ -31,6 +31,43 @@ info "Running install.sh"
 info "This script installs dotfiles using symbolic links"
 
 # ==================================================
+# Backup prompt
+# ==================================================
+
+ENABLE_BACKUP=true
+
+ask_backup() {
+  # Non-interactive shells default to backups enabled
+  if [[ ! -t 0 ]]; then
+    ENABLE_BACKUP=true
+    return
+  fi
+
+  while true; do
+    printf "%b " "$INFO Create backups of existing files? [Y/n]"
+    read -r reply
+    case "${reply:-Y}" in
+      [Yy]|[Yy][Ee][Ss])
+        ENABLE_BACKUP=true
+        break
+        ;;
+      [Nn]|[Nn][Oo])
+        ENABLE_BACKUP=false
+        warn "Backups are DISABLED"
+        break
+        ;;
+      *)
+        warn "Please answer y or n"
+        ;;
+    esac
+  done
+}
+
+log
+ask_backup
+log
+
+# ==================================================
 # Paths
 # ==================================================
 
@@ -68,8 +105,9 @@ is_windows() {
 # ==================================================
 
 backup_real_file() {
-  local target="$1"
+  $ENABLE_BACKUP || return 0
 
+  local target="$1"
   [[ -f "$target" && ! -L "$target" ]] || return 0
 
   local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
@@ -86,10 +124,15 @@ remove_existing_dir() {
   local target="$1"
 
   if [[ -d "$target" && ! -L "$target" ]]; then
-    local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
-    mv "$target" "$backup"
-    warn "Existing directory $(basename "$target") backed up"
-    info "Backup created at: $(basename "$backup")"
+    if $ENABLE_BACKUP; then
+      local backup="${target}.bak.$(date +%Y%m%d-%H%M%S)"
+      mv "$target" "$backup"
+      warn "Existing directory $(basename "$target") backed up"
+      info "Backup created at: $(basename "$backup")"
+    else
+      warn "Removing existing directory $(basename "$target") (no backup)"
+      rm -rf "$target"
+    fi
   fi
 }
 
@@ -116,10 +159,7 @@ install_symlink() {
   local dest="$2"
   local name="$3"
 
-  # Directories must be handled explicitly
   remove_existing_dir "$dest"
-
-  # Files / symlinks
   backup_real_file "$dest"
   remove_wrong_symlink "$dest" "$src"
 
@@ -160,7 +200,6 @@ info "Installing dotfiles"
 info "Dotfiles directory: $DOTFILES_DIR"
 log
 
-# Ensure XDG config directory exists
 mkdir -p "$HOME/.config"
 
 install_symlink "$BASHRC_SRC" "$BASHRC_DEST" "bashrc"
@@ -169,7 +208,6 @@ install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
 install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
 install_symlink "$NVIM_SRC" "$NVIM_DEST" "neovim config"
 
-# Configure git to use global gitignore
 git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
 ok "Git configured to use global gitignore"
 
