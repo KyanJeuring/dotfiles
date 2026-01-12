@@ -158,38 +158,64 @@ encfile() {
   [[ $# -ne 1 ]] && { err "Usage: encfile <file>"; return 1; }
 
   local infile="$1"
-  local outfile="${infile}.enc"
-  local pass confirm
+  local base encfile zipfile readme
+  local pass confirm ans
+
+  base="$(basename "$infile")"
+  encfile="${base}.enc"
+  zipfile="${base}.encrypted.zip"
+  readme="README.txt"
 
   [[ -f "$infile" ]] || { err "File not found: $infile"; return 1; }
-  [[ -e "$outfile" ]] && { err "Output exists: $outfile"; return 1; }
+  [[ -e "$encfile" ]] && { err "Output exists: $encfile"; return 1; }
+  [[ -e "$zipfile" ]] && { err "Output exists: $zipfile"; return 1; }
 
-  read -rsp "Encryption password: " pass
-  echo
-  read -rsp "Confirm password: " confirm
-  echo
-
-  [[ "$pass" != "$confirm" ]] && {
-    err "Passwords do not match"
-    return 1
-  }
+  read -rsp "Encryption password: " pass; echo
+  read -rsp "Confirm password: " confirm; echo
+  [[ "$pass" != "$confirm" ]] && { err "Passwords do not match"; return 1; }
 
   printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -salt \
     -pass stdin \
     -in "$infile" \
-    -out "$outfile" || return 1
+    -out "$encfile" || return 1
 
   if ! printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -d \
         -pass stdin \
-        -in "$outfile" \
+        -in "$encfile" \
         -out /dev/null; then
     err "Verification failed — original kept"
-    rm -f "$outfile"
+    rm -f "$encfile"
     return 1
   fi
 
   rm "$infile"
-  ok "Encrypted and removed original: $outfile"
+  ok "Encrypted: $encfile (original removed)"
+
+  read -rp "Bundle encrypted file with README into ZIP? [y/N]: " ans
+  [[ ! "$ans" =~ ^[Yy]$ ]] && return 0
+
+  cat > "$readme" <<EOF
+This file was encrypted using OpenSSL (AES-256-CBC).
+
+You need:
+- OpenSSL installed
+- The password (shared separately)
+
+To decrypt on Linux / macOS / WSL:
+
+  openssl enc -aes-256-cbc -pbkdf2 -d -in $encfile -out $base
+
+Notes:
+- The password is case-sensitive
+- You can retry if you mistype the password
+- Losing the password means the file cannot be recovered
+EOF
+
+  zip -q "$zipfile" "$encfile" "$readme"
+
+  rm "$encfile" "$readme"
+
+  ok "Encrypted and bundled: $zipfile"
 }
 
 ## Decrypt file
@@ -218,7 +244,7 @@ decfile() {
 
   ok "Decrypted: $outfile"
 
-  read -rp "Delete encrypted file '$infile'? [y/N] " ans
+  read -rp "Delete encrypted file '$infile'? [y/N]: " ans
   if [[ "$ans" =~ ^[Yy]$ ]]; then
     rm "$infile"
     ok "Encrypted file deleted"
