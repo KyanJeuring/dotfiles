@@ -159,27 +159,21 @@ encfile() {
 
   local infile="$1"
   local outfile="${infile}.enc"
-  local pass
+  local pass confirm
 
   [[ -f "$infile" ]] || { err "File not found: $infile"; return 1; }
   [[ -e "$outfile" ]] && { err "Output exists: $outfile"; return 1; }
 
-  read -rsp "Encryption password: " pass
-  echo
-  read -rsp "Confirm password: " confirm
-  echo
+  read -rsp "Encryption password: " pass; echo
+  read -rsp "Confirm password: " confirm; echo
+  [[ "$pass" != "$confirm" ]] && { err "Passwords do not match"; return 1; }
 
-  [[ "$pass" != "$confirm" ]] && {
-    err "Passwords do not match"
-    return 1
-  }
-
-  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -salt \
+  printf '%s' "$pass" | openssl enc -aes-256-gcm -pbkdf2 -salt \
     -pass stdin \
     -in "$infile" \
     -out "$outfile" || return 1
 
-  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -d \
+  printf '%s' "$pass" | openssl enc -aes-256-gcm -pbkdf2 -d \
     -pass stdin \
     -in "$outfile" \
     -out /dev/null || {
@@ -204,23 +198,21 @@ decfile() {
   [[ "$infile" == "$outfile" ]] && { err "Input must end with .enc"; return 1; }
   [[ -e "$outfile" ]] && { err "Output exists: $outfile"; return 1; }
 
-  read -rsp "Decryption password: " pass
-  echo
+  read -rsp "Decryption password: " pass; echo
 
-  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -d \
+  printf '%s' "$pass" | openssl enc -aes-256-gcm -pbkdf2 -d \
     -pass stdin \
     -in "$infile" \
-    -out "$outfile" || return 1
+    -out "$outfile" || {
+      err "Decryption failed (wrong password or corrupted file)"
+      return 1
+    }
 
   ok "Decrypted: $outfile"
 
-  read -rp "Delete encrypted file '$infile'? [y/N] " ans
-  if [[ "$ans" =~ ^[Yy]$ ]]; then
-    rm "$infile"
-    ok "Encrypted file deleted"
-  else
-    info "Encrypted file kept"
-  fi
+  read -rp "Delete encrypted file '$infile'? [y/N]: " ans
+  [[ "$ans" =~ ^[Yy]$ ]] && { rm "$infile"; ok "Encrypted file deleted"; } \
+  || info "Encrypted file kept"
 }
 
 # ==================================================
