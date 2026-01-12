@@ -159,15 +159,30 @@ encfile() {
 
   local infile="$1"
   local outfile="${infile}.enc"
+  local pass
 
   [[ -f "$infile" ]] || { err "File not found: $infile"; return 1; }
   [[ -e "$outfile" ]] && { err "Output exists: $outfile"; return 1; }
 
-  openssl enc -aes-256-cbc -pbkdf2 -salt \
-    -in "$infile" -out "$outfile" || return 1
+  read -rsp "Encryption password: " pass
+  echo
+  read -rsp "Confirm password: " confirm
+  echo
 
-  openssl enc -aes-256-cbc -pbkdf2 -d \
-    -in "$outfile" -out /dev/null || {
+  [[ "$pass" != "$confirm" ]] && {
+    err "Passwords do not match"
+    return 1
+  }
+
+  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -salt \
+    -pass stdin \
+    -in "$infile" \
+    -out "$outfile" || return 1
+
+  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -d \
+    -pass stdin \
+    -in "$outfile" \
+    -out /dev/null || {
       err "Verification failed — original kept"
       rm -f "$outfile"
       return 1
