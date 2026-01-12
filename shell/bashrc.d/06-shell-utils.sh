@@ -198,19 +198,29 @@ decfile() {
 
   local infile="$1"
   local outfile="${infile%.enc}"
+  local pass
 
   [[ -f "$infile" ]] || { err "File not found: $infile"; return 1; }
   [[ "$infile" == "$outfile" ]] && { err "Input must end with .enc"; return 1; }
   [[ -e "$outfile" ]] && { err "Output exists: $outfile"; return 1; }
 
-  openssl enc -aes-256-cbc -pbkdf2 -d \
-    -in "$infile" -out "$outfile" || return 1
+  read -rsp "Decryption password: " pass
+  echo
+
+  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -d \
+    -pass stdin \
+    -in "$infile" \
+    -out "$outfile" || return 1
 
   ok "Decrypted: $outfile"
 
   read -rp "Delete encrypted file '$infile'? [y/N] " ans
-  [[ "$ans" =~ ^[Yy]$ ]] && { rm "$infile"; ok "Encrypted file deleted"; } \
-  || info "Encrypted file kept"
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    rm "$infile"
+    ok "Encrypted file deleted"
+  else
+    info "Encrypted file kept"
+  fi
 }
 
 # ==================================================
