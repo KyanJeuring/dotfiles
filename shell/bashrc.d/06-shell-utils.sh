@@ -8,6 +8,21 @@ ff() {
   find . -iname "*$1*" 2>/dev/null
 }
 
+## Fuzzy find files
+ffz() {
+  command -v fzf >/dev/null || {
+    err "fzf not installed"
+    return 1
+  }
+
+  [[ "$(pwd)" == "$HOME" ]] && {
+    warn "Running in HOME — this may be slow"
+  }
+
+  find . -type f 2>/dev/null | fzf
+}
+
+
 ## Search text in files (ripgrep fallback-safe)
 grepall() {
   [[ -z "$1" ]] && { err "Usage: grepall <text>"; return 1; }
