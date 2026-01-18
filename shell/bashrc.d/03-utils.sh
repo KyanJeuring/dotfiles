@@ -93,3 +93,150 @@ update-dotfiles() {
     return 1
   }
 }
+
+# ==================================================
+# Network utilities
+# ==================================================
+
+## Check internet connectivity
+netcheck() {
+  curl -fsS https://1.1.1.1 >/dev/null && echo "Online" || echo "Offline"
+}
+
+## Show current UTC time from internet
+utctime() {
+  curl -fsS https://timeapi.io/api/Time/current/zone?timeZone=UTC 2>/dev/null |
+    jq -r '.dateTime' 2>/dev/null && return
+  curl -fsS https://worldtimeapi.org/api/timezone/Etc/UTC 2>/dev/null |
+    jq -r '.utc_datetime' 2>/dev/null && return
+  warn "Using local system UTC time"
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+## Show public IP address
+myip() {
+  curl -fsS https://api.ipify.org || curl -fsS https://ifconfig.me || echo "IP unavailable"
+}
+
+## Show public IP and rough geolocation
+myipinfo() {
+  curl -fsS https://ipinfo.io || echo "IP info unavailable"
+}
+
+## Show HTTP status code for a URL
+httpstatus() {
+  if [ -z "$1" ]; then
+    echo "Usage: httpstatus <url>"
+    return 1
+  fi
+  curl -o /dev/null -s -w "%{http_code}\n" "$1"
+}
+
+## Show HTTP response headers
+httpheaders() {
+  if [ -z "$1" ]; then
+    echo "Usage: httpheaders <url>"
+    return 1
+  fi
+  curl -sI "$1"
+}
+
+## Resolve a domain via HTTP request
+dnscheck() {
+  if [ -z "$1" ]; then
+    echo "Usage: dnscheck <domain>"
+    return 1
+  fi
+  curl -sI "https://$1" || curl -sI "http://$1" | head -n 1
+}
+
+portscan() {
+  log "$INFO Starting port scan utility"
+  log
+
+  if ! command -v nmap >/dev/null 2>&1; then
+    log "$ERR nmap is not installed"
+    exit 1
+  fi
+
+  get_public_ip() {
+    curl -fsS https://ifconfig.me 2>/dev/null \
+      || curl -fsS https://ipinfo.io/ip 2>/dev/null \
+      || return 1
+  }
+
+  log "$INFO Detecting public IP..."
+  PUBLIC_IP="$(get_public_ip || true)"
+
+  if [[ -z "${PUBLIC_IP:-}" ]]; then
+    log "$ERR Could not determine public IP"
+    exit 1
+  fi
+
+  log "$OK Public IP detected: $PUBLIC_IP"
+  log
+
+  log "$INFO Select scan type:"
+  log "  1) Full scan (all TCP ports)"
+  log "  2) Targeted scan (specific ports)"
+  log
+
+  read -rp "Enter choice [1-2]: " CHOICE
+  log
+
+  case "$CHOICE" in
+    1)
+      log "$INFO Running FULL TCP port scan on $PUBLIC_IP"
+      log "$INFO Scanning all 65535 TCP ports"
+      log "$WARN This may take several minutes to complete"
+      log
+      sudo nmap -p- "$PUBLIC_IP"
+      ;;
+    2)
+      read -rp "Enter ports (e.g. 22,80,443,2222): " PORTS
+      if [[ -z "${PORTS// }" ]]; then
+        log "$ERR No ports specified"
+        exit 1
+      fi
+      log
+      log "$INFO Running TARGETED TCP port scan on $PUBLIC_IP"
+      log "$INFO Scanning the following ports $PORTS"
+      log
+      sudo nmap -p "$PORTS" "$PUBLIC_IP"
+      ;;
+    *)
+      log "$ERR Invalid option"
+      exit 1
+      ;;
+  esac
+
+  log "$OK Scan completed"
+  log
+}
+
+# ==================================================
+# API testing utilities
+# ==================================================
+
+## Fetch JSON from URL (pretty if jq is available)
+getjson() {
+  if [ -z "$1" ]; then
+    echo "Usage: getjson <url>"
+    return 1
+  fi
+
+  if command -v jq >/dev/null 2>&1; then
+    curl -fsS "$1" | jq
+  else
+    curl -fsS "$1"
+  fi
+}
+
+# ==================================================
+# Weather utility
+# ==================================================
+
+weather() {
+  local location="${1:-}"
+  curl -fsS "wttr.in/${location}?m" || echo "Weather unavailable"
+}
