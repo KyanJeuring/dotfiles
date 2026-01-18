@@ -759,6 +759,7 @@ grescue() {
   }'
 
   log
+  info "Tip: HEAD@{1} is usually the state before your last action"
   info "Restore with:"
   info "  grestorehead HEAD@{N}"
 }
