@@ -749,7 +749,7 @@ grescue() {
       sub(/^reset: moving to /, "", line)
       msg = trunc("reset --> " line, msg_width)
 
-      printf "%sHEAD@{%d}%s  %s[MOVE  ]%s  %-*s %s%s%s  %s\n",
+      printf "%sHEAD@{%d}%s  %s[MOVE]%s  %-*s %s%s%s  %s\n",
         blue, idx, reset,
         yellow, reset,
         msg_width, msg,
