@@ -565,9 +565,13 @@ gusn() {
   git reset --soft "HEAD~$n" || return 1
 
   ok "Last $n commit(s) undone (soft)"
+  info "Current state: all changes are staged"
   info "Next steps:"
   info "  - Run 'gc' to squash everything into one commit"
   info "  - Run 'grs' to unstage everything and re-commit selectively"
+  info "Recovery:"
+  info "  - Run 'grescue' to inspect previous HEAD positions"
+  info "  - Run 'grestorehead HEAD@{N}' to restore a previous state"
 }
 
 ## Undo last commit (hard)
@@ -626,8 +630,13 @@ guhn() {
   warn "This will permanently discard the last $n commit(s)"
   confirm "Continue?" || return 1
 
-  git reset --hard "HEAD~$n" &&
+  git reset --hard "HEAD~$n" || return 1
+
   ok "Last $n commit(s) discarded (hard)"
+  warn "Recovery is only possible via reflog"
+  info "Recovery:"
+  info "  - Run 'grescue' to inspect previous HEAD positions"
+  info "  - Run 'grestorehead HEAD@{N}' to restore a previous state"
 }
 
 ## Move latest local commit to another branch
