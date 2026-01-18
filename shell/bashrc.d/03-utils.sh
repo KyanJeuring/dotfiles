@@ -169,6 +169,7 @@ dnscheck() {
 }
 
 ## Scan open TCP ports on a public IP (default: self)
+## Scan open TCP ports on a public IPv4 address (default: self)
 portscan() {
   info "Starting port scan utility"
   log
@@ -180,6 +181,9 @@ portscan() {
 
   local TARGET_IP
 
+  # --------------------------------------------------
+  # Determine target IP
+  # --------------------------------------------------
   if [[ -n "${1:-}" ]]; then
     TARGET_IP="$1"
 
@@ -188,7 +192,12 @@ portscan() {
       err "Private, loopback, and link-local IPs are not allowed"
       return 1
     fi
+
+    info "Target IP information:"
+    ipinfo "$TARGET_IP"
+    log
   else
+    info "Detecting public IP..."
     TARGET_IP="$(myip || true)"
 
     if [[ -z "$TARGET_IP" ]]; then
@@ -201,9 +210,8 @@ portscan() {
       return 1
     fi
 
-    log
     info "Public IP information:"
-    ipinfo "$TARGET_IP"
+    myipinfo
     log
   fi
 
