@@ -351,7 +351,7 @@ ghead() {
     }
     else if (line ~ /^reset:/) {
       sub(/^reset: moving to /, "", line)
-      msg = trunc("reset --> " line, msg_width)
+      msg = trunc("reset -> " line, msg_width)
 
       printf "%sHEAD@{%d}%s  %s[MOVE]%s  %-*s %s%s%s  %s\n",
         blue, idx, reset,
@@ -757,7 +757,7 @@ gmove() {
     confirm "Continue?" || return 1
   fi
 
-  info "Moving latest commit from '$current' --> '$target'"
+  info "Moving latest commit from '$current' -> '$target'"
 
   orig="$current"
 
@@ -957,7 +957,7 @@ syncdev() {
   info "Creating backup tag: $backup_tag"
   git tag "$backup_tag" || return 1
 
-  info "Resetting dev --> origin/main"
+  info "Resetting dev -> origin/main"
   git reset --hard origin/main || return 1
 
   if [[ "$current" != "dev" ]]; then
@@ -974,7 +974,7 @@ syncdev() {
 # Git release / promotion
 # ==================================================
 
-## Promote source --> target and create a release tag
+## Promote source -> target and create a release tag
 promote() {
   set -uo pipefail
 
@@ -983,8 +983,8 @@ promote() {
 
   if [[ $# -eq 1 ]]; then
     warn "Usage:"
-    warn "  promote                    # promote dev --> main"
-    warn "  promote <source> <target>  # promote source --> target"
+    warn "  promote                    # promote dev -> main"
+    warn "  promote <source> <target>  # promote source -> target"
     return 1
   elif [[ $# -eq 2 ]]; then
     SRC_BRANCH="$1"
@@ -1070,7 +1070,7 @@ promote() {
   info "Pulling latest $TARGET_BRANCH"
   git pull origin "$TARGET_BRANCH" || return 1
 
-  info "Fast-forwarding $TARGET_BRANCH --> $SRC_BRANCH"
+  info "Fast-forwarding $TARGET_BRANCH -> $SRC_BRANCH"
   git merge --ff-only "$SRC_BRANCH" || return 1
 
   info "Pushing $TARGET_BRANCH"
@@ -1082,8 +1082,8 @@ promote() {
 
   info "Tagging promote"
   tag="promote-$SRC_BRANCH-to-$TARGET_BRANCH-$(date +%Y%m%d-%H%M%S)"
-  git tag -a "$tag" -m "Promote $SRC_BRANCH --> $TARGET_BRANCH" || return 1
+  git tag -a "$tag" -m "Promote $SRC_BRANCH -> $TARGET_BRANCH" || return 1
   git push origin "$tag" || return 1
 
-  ok "Promote successful ($SRC_BRANCH --> $TARGET_BRANCH, tag: $tag)"
+  ok "Promote successful ($SRC_BRANCH -> $TARGET_BRANCH, tag: $tag)"
 }
