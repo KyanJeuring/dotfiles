@@ -15,4 +15,5 @@ DEPRECATED_FUNCTIONS=(
   update_dotfiles
   is-public-ipv4
   git-host-status
+  grescue
 )

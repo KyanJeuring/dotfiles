@@ -295,6 +295,79 @@ gl() {
   git log --oneline --graph --all --decorate
 }
 
+## Show recent HEAD positions (default: 20 reflog entries)
+ghead() {
+  local limit="${1:-20}"
+
+  [[ "$limit" =~ ^[0-9]+$ ]] || {
+    err "Usage: ghead [number-of-lines]"
+    return 1
+  }
+
+  (( limit < 1 )) && {
+    err "Line count must be >= 1"
+    return 1
+  }
+
+  info "Recent HEAD positions (newest first)"
+  log
+
+  git reflog --date=relative | head -n "$limit" | awk '
+  BEGIN {
+    blue   = "\033[0;34m"
+    green  = "\033[0;32m"
+    yellow = "\033[0;33m"
+    reset  = "\033[0m"
+
+    msg_width = 45
+  }
+
+  function trunc(s, w) {
+    return (length(s) > w) ? substr(s, 1, w - 1) "…" : s
+  }
+
+  {
+    idx  = NR - 1
+    hash = $1
+
+    time = ""
+    if (match($0, /HEAD@\{([^}]+)\}/, m)) {
+      time = "(" m[1] ")"
+    }
+
+    line = $0
+    sub(/^[a-f0-9]+ HEAD@\{[^}]+\}: /, "", line)
+
+    if (line ~ /^commit:/) {
+      sub(/^commit: /, "", line)
+      msg = trunc(line, msg_width)
+
+      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-*s %s%s%s  %s\n",
+        blue, idx, reset,
+        green, reset,
+        msg_width, msg,
+        blue, time, reset,
+        hash
+    }
+    else if (line ~ /^reset:/) {
+      sub(/^reset: moving to /, "", line)
+      msg = trunc("reset --> " line, msg_width)
+
+      printf "%sHEAD@{%d}%s  %s[MOVE]%s  %-*s %s%s%s  %s\n",
+        blue, idx, reset,
+        yellow, reset,
+        msg_width, msg,
+        blue, time, reset,
+        hash
+    }
+  }'
+
+  log
+  info "Tip: HEAD@{1} is usually the state before your last action"
+  info "Restore with:"
+  info "  grestorehead HEAD@{N}"
+}
+
 ## Show commits pending promotion
 gdiffpromote() {
   git log main..dev --oneline --decorate
@@ -570,7 +643,7 @@ gusn() {
   info "  - Run 'gc' to squash everything into one commit"
   info "  - Run 'grs' to unstage everything and re-commit selectively"
   info "Recovery:"
-  info "  - Run 'grescue' to inspect previous HEAD positions"
+  info "  - Run 'ghead' to inspect previous HEAD positions"
   info "  - Run 'grestorehead HEAD@{N}' to restore a previous state"
 }
 
@@ -635,7 +708,7 @@ guhn() {
   ok "Last $n commit(s) discarded (hard)"
   warn "Recovery is only possible via reflog"
   info "Recovery:"
-  info "  - Run 'grescue' to inspect previous HEAD positions"
+  info "  - Run 'ghead' to inspect previous HEAD positions"
   info "  - Run 'grestorehead HEAD@{N}' to restore a previous state"
 }
 
@@ -701,79 +774,6 @@ gmove() {
   git reset --hard HEAD~1 || return 1
 
   ok "Commit successfully moved to '$target'"
-}
-
-## Show recent HEAD positions (default: 20 reflog entries)
-grescue() {
-  local limit="${1:-20}"
-
-  [[ "$limit" =~ ^[0-9]+$ ]] || {
-    err "Usage: grescue [number-of-lines]"
-    return 1
-  }
-
-  (( limit < 1 )) && {
-    err "Line count must be >= 1"
-    return 1
-  }
-
-  info "Recent HEAD positions (newest first)"
-  log
-
-  git reflog --date=relative | head -n "$limit" | awk '
-  BEGIN {
-    blue   = "\033[0;34m"
-    green  = "\033[0;32m"
-    yellow = "\033[0;33m"
-    reset  = "\033[0m"
-
-    msg_width = 45
-  }
-
-  function trunc(s, w) {
-    return (length(s) > w) ? substr(s, 1, w - 1) "…" : s
-  }
-
-  {
-    idx  = NR - 1
-    hash = $1
-
-    time = ""
-    if (match($0, /HEAD@\{([^}]+)\}/, m)) {
-      time = "(" m[1] ")"
-    }
-
-    line = $0
-    sub(/^[a-f0-9]+ HEAD@\{[^}]+\}: /, "", line)
-
-    if (line ~ /^commit:/) {
-      sub(/^commit: /, "", line)
-      msg = trunc(line, msg_width)
-
-      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-*s %s%s%s  %s\n",
-        blue, idx, reset,
-        green, reset,
-        msg_width, msg,
-        blue, time, reset,
-        hash
-    }
-    else if (line ~ /^reset:/) {
-      sub(/^reset: moving to /, "", line)
-      msg = trunc("reset --> " line, msg_width)
-
-      printf "%sHEAD@{%d}%s  %s[MOVE]%s  %-*s %s%s%s  %s\n",
-        blue, idx, reset,
-        yellow, reset,
-        msg_width, msg,
-        blue, time, reset,
-        hash
-    }
-  }'
-
-  log
-  info "Tip: HEAD@{1} is usually the state before your last action"
-  info "Restore with:"
-  info "  grestorehead HEAD@{N}"
 }
 
 ## Restore HEAD to a previous position
