@@ -203,7 +203,7 @@ portscan() {
 
     log
     info "Public IP information:"
-    myipinfo
+    ipinfo "$TARGET_IP"
     log
   fi
 
