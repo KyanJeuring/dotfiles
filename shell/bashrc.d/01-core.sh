@@ -11,4 +11,7 @@ DEPRECATED_FUNCTIONS=(
   dotfiles-update
   drestart
   dresetstack
+  update-dotfiles
+  update_dotfiles
+  is-public-ipv4 
 )
