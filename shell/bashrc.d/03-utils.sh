@@ -141,35 +141,6 @@ ipinfo() {
   fi
 }
 
-## Check if an IPv4 address is public
-is_public_ipv4() {
-  if [ -z "$1" ]; then
-    err "Usage: is_public_ipv4 <ip-address>"
-    return 1
-  fi
-
-  local ip="$1"
-
-  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
-    || { err "Invalid IP format"; return 1; }
-
-  IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
-
-  for o in "$o1" "$o2" "$o3" "$o4"; do
-    ((o >= 0 && o <= 255)) \
-      || { err "IP octet out of range (0-255)"; return 1; }
-  done
-
-  ((o1 == 127)) && { err "IP is a loopback address"; return 1; }
-  ((o1 == 10)) && { err "IP is a private address"; return 1; }
-  ((o1 == 192 && o2 == 168)) && { err "IP is a private address"; return 1; }
-  ((o1 == 172 && o2 >= 16 && o2 <= 31)) && { err "IP is a private address"; return 1; }
-  ((o1 == 169 && o2 == 254)) && { err "IP is a link-local address"; return 1; }
-
-  ok "IP is a public address"
-  return 0
-}
-
 ## Show HTTP status code for a URL
 httpstatus() {
   if [ -z "$1" ]; then
@@ -212,7 +183,7 @@ portscan() {
   if [[ -n "${1:-}" ]]; then
     TARGET_IP="$1"
 
-    if ! is_public_ipv4 "$TARGET_IP" 2>/dev/null; then
+    if ! is_public_ipv4 "$TARGET_IP"; then
       err "Invalid target IP: $TARGET_IP"
       err "Private, loopback, and link-local IPs are not allowed"
       return 1
@@ -226,12 +197,11 @@ portscan() {
       return 1
     fi
 
-    if ! is_public_ipv4 "$TARGET_IP" 2>/dev/null; then
+    if ! is_public_ipv4 "$TARGET_IP"; then
       err "Detected IP is not a valid public IPv4 address: $TARGET_IP"
       return 1
     fi
 
-    info "Public IP detected: $TARGET_IP"
     log
     info "Public IP information:"
     myipinfo
