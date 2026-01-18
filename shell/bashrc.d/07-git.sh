@@ -703,12 +703,24 @@ gmove() {
   ok "Commit successfully moved to '$target'"
 }
 
-## Show recent HEAD positions
+## Show recent HEAD positions (default: 20 reflog entries)
 grescue() {
+  local limit="${1:-20}"
+
+  [[ "$limit" =~ ^[0-9]+$ ]] || {
+    err "Usage: grescue [number-of-lines]"
+    return 1
+  }
+
+  (( limit < 1 )) && {
+    err "Line count must be >= 1"
+    return 1
+  }
+
   info "Recent HEAD positions (newest first)"
   log
 
-  git reflog --date=relative | head -n 20 | awk '
+  git reflog --date=relative | head -n "$limit" | awk '
   BEGIN {
     blue   = "\033[0;34m"
     green  = "\033[0;32m"
