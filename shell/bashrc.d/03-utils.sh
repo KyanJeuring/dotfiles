@@ -147,33 +147,33 @@ dnscheck() {
     echo "Usage: dnscheck <domain>"
     return 1
   fi
-  curl -sI "https://$1" || curl -sI "http://$1" | head -n 1
+  ( curl -sI "https://$1" || curl -sI "http://$1" ) | head -n 1
 }
 
+## Scan open ports on public IP
 portscan() {
   log "$INFO Starting port scan utility"
   log
 
   if ! command -v nmap >/dev/null 2>&1; then
     log "$ERR nmap is not installed"
-    exit 1
+    return 1
   fi
 
-  get_public_ip() {
-    curl -fsS https://ifconfig.me 2>/dev/null \
-      || curl -fsS https://ipinfo.io/ip 2>/dev/null \
-      || return 1
-  }
-
   log "$INFO Detecting public IP..."
-  PUBLIC_IP="$(get_public_ip || true)"
+  local PUBLIC_IP
+  PUBLIC_IP="$(myip || true)"
 
-  if [[ -z "${PUBLIC_IP:-}" ]]; then
+  if [[ -z "$PUBLIC_IP" ]]; then
     log "$ERR Could not determine public IP"
-    exit 1
+    return 1
   fi
 
   log "$OK Public IP detected: $PUBLIC_IP"
+  log
+
+  log "$INFO Public IP information:"
+  myipinfo
   log
 
   log "$INFO Select scan type:"
@@ -181,8 +181,15 @@ portscan() {
   log "  2) Targeted scan (specific ports)"
   log
 
-  read -rp "Enter choice [1-2]: " CHOICE
+  local CHOICE
+  read -rp "Enter choice [1-2] (default: 2): " CHOICE
+  CHOICE="${CHOICE:-2}"
   log
+
+  local NMAP_CMD="nmap"
+  if command -v sudo >/dev/null 2>&1; then
+    NMAP_CMD="sudo nmap"
+  fi
 
   case "$CHOICE" in
     1)
@@ -190,23 +197,24 @@ portscan() {
       log "$INFO Scanning all 65535 TCP ports"
       log "$WARN This may take several minutes to complete"
       log
-      sudo nmap -p- "$PUBLIC_IP"
+      $NMAP_CMD -p- "$PUBLIC_IP"
       ;;
     2)
+      local PORTS
       read -rp "Enter ports (e.g. 22,80,443,2222): " PORTS
       if [[ -z "${PORTS// }" ]]; then
         log "$ERR No ports specified"
-        exit 1
+        return 1
       fi
       log
       log "$INFO Running TARGETED TCP port scan on $PUBLIC_IP"
       log "$INFO Scanning the following ports $PORTS"
       log
-      sudo nmap -p "$PORTS" "$PUBLIC_IP"
+      $NMAP_CMD -p "$PORTS" "$PUBLIC_IP"
       ;;
     *)
       log "$ERR Invalid option"
-      exit 1
+      return 1
       ;;
   esac
 
