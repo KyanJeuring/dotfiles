@@ -5,13 +5,13 @@
 ## List running containers with status and ports
 dps() {
   docker ps --format "table {{.ID}}\t{{.Label \"com.docker.compose.service\"}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" \
-    | awk 'BEGIN {FS=OFS="\t"} NR==1 {gsub(/service/, "SERVICES")} {print}'
+    | sed '1 s/service/SERVICE/' | column -t -s $'\t'
 }
 
 ## List all containers with status and ports
 dpsa() {
   docker ps -a --format "table {{.ID}}\t{{.Label \"com.docker.compose.service\"}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}" \
-    | awk 'BEGIN {FS=OFS="\t"} NR==1 {gsub(/service/, "SERVICES")} {print}'
+    | sed '1 s/service/SERVICE/' | column -t -s $'\t'
 }
 
 ## Grep running containers by name
