@@ -708,7 +708,20 @@ grescue() {
   info "Recent HEAD positions (newest first)"
   log
 
-  git reflog --date=relative | head -n 15 | awk '{ printf "  HEAD@{%d}  %s\n", NR-1, $0 }'
+  git reflog --date=relative | head -n 20 | awk '
+  BEGIN {
+    green = "\033[0;32m"
+    yellow = "\033[0;33m"
+    reset = "\033[0m"
+  }
+  {
+    idx = NR-1
+    if ($0 ~ /commit:/) {
+      printf "  HEAD@{%d}  %s[COMMIT]%s  %s\n", idx, green, reset, $0
+    } else {
+      printf "  HEAD@{%d}  %s[MOVE  ]%s  %s\n", idx, yellow, reset, $0
+    }
+  }'
 
   log
   info "Restore with:"
