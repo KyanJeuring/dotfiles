@@ -71,7 +71,6 @@ dstopall() {
   docker ps -q | xargs -r docker stop
 }
 
-
 ## Recreate docker stack with volume removal
 drecompose() {
   info "Recreating docker stack with volume removal"
