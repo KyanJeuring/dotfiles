@@ -9,4 +9,6 @@ DEPRECATED_FUNCTIONS=(
   deploy
   bashrc-update
   dotfiles-update
+  drestart
+  dresetstack
 )
