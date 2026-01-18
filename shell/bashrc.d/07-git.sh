@@ -705,8 +705,14 @@ gmove() {
 
 ## Show recent HEAD positions
 grescue() {
-  info "Recent HEAD positions"
-  git reflog --date=relative | head -n 15
+  info "Recent HEAD positions (newest first)"
+  log
+
+  git reflog --date=relative | head -n 15 | awk '{ printf "  HEAD@{%d}  %s\n", NR-1, $0 }'
+
+  log
+  info "Restore with:"
+  info "  grestorehead HEAD@{N}"
 }
 
 ## Restore HEAD to a previous position
