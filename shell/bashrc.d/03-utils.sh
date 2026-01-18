@@ -120,7 +120,59 @@ myip() {
 
 ## Show public IP and rough geolocation
 myipinfo() {
-  curl -fsS https://ipinfo.io || echo "IP info unavailable"
+  if command -v jq >/dev/null 2>&1; then
+    curl -fsS https://ipinfo.io 2>/dev/null | jq
+  else
+    curl -fsS https://ipinfo.io 2>/dev/null
+  fi
+}
+
+## Show IP info for a specific IP address
+ipinfo() {
+  if [ -z "$1" ]; then
+    echo "Usage: ipinfo <ip-address>"
+    return 1
+  fi
+
+  if command -v jq >/dev/null 2>&1; then
+    curl -fsS "https://ipinfo.io/$1" 2>/dev/null | jq
+  else
+    curl -fsS "https://ipinfo.io/$1" 2>/dev/null
+  fi
+}
+
+## Check if an IPv4 address is public
+is-public-ipv4() {
+  if [ -z "$1" ]; then
+    echo "Usage: is-public-ipv4 <ip-address>"
+    return 1
+  fi
+
+  local ip="$1"
+
+  # Basic IPv4 format check
+  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+
+  # Split octets
+  IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+
+  # Each octet must be 0–255
+  for o in "$o1" "$o2" "$o3" "$o4"; do
+    ((o >= 0 && o <= 255)) || return 1
+  done
+
+  # Reject loopback
+  ((o1 == 127)) && return 1
+
+  # Reject private ranges
+  ((o1 == 10)) && return 1
+  ((o1 == 192 && o2 == 168)) && return 1
+  ((o1 == 172 && o2 >= 16 && o2 <= 31)) && return 1
+
+  # Reject link-local
+  ((o1 == 169 && o2 == 254)) && return 1
+
+  return 0
 }
 
 ## Show HTTP status code for a URL
@@ -150,7 +202,7 @@ dnscheck() {
   ( curl -sI "https://$1" || curl -sI "http://$1" ) | head -n 1
 }
 
-## Scan open ports on public IP
+## Scan open TCP ports on a public IP (default: self)
 portscan() {
   log "$INFO Starting port scan utility"
   log
@@ -160,21 +212,40 @@ portscan() {
     return 1
   fi
 
-  log "$INFO Detecting public IP..."
-  local PUBLIC_IP
-  PUBLIC_IP="$(myip || true)"
+  local TARGET_IP
 
-  if [[ -z "$PUBLIC_IP" ]]; then
-    log "$ERR Could not determine public IP"
-    return 1
+  if [[ -n "${1:-}" ]]; then
+    TARGET_IP="$1"
+
+    if ! is-public-ipv4 "$TARGET_IP"; then
+      log "$ERR Invalid target IP: $TARGET_IP"
+      log "$ERR Private, loopback, and link-local IPs are not allowed"
+      return 1
+    fi
+
+    log "$WARN You are about to scan a user-specified PUBLIC IP: $TARGET_IP"
+    log "$WARN Only scan systems you own or have permission to test"
+    confirm "Continue?" || return 1
+  else
+    log "$INFO Detecting public IP..."
+    TARGET_IP="$(myip || true)"
+
+    if [[ -z "$TARGET_IP" ]]; then
+      log "$ERR Could not determine public IP"
+      return 1
+    fi
+
+    if ! is-public-ipv4 "$TARGET_IP"; then
+      log "$ERR Detected IP is not a valid public IPv4 address: $TARGET_IP"
+      return 1
+    fi
+
+    log "$OK Public IP detected: $TARGET_IP"
+    log
+    log "$INFO Public IP information:"
+    myipinfo
+    log
   fi
-
-  log "$OK Public IP detected: $PUBLIC_IP"
-  log
-
-  log "$INFO Public IP information:"
-  myipinfo
-  log
 
   log "$INFO Select scan type:"
   log "  1) Full scan (all TCP ports)"
@@ -193,11 +264,11 @@ portscan() {
 
   case "$CHOICE" in
     1)
-      log "$INFO Running FULL TCP port scan on $PUBLIC_IP"
+      log "$INFO Running FULL TCP port scan on $TARGET_IP"
       log "$INFO Scanning all 65535 TCP ports"
       log "$WARN This may take several minutes to complete"
       log
-      $NMAP_CMD -p- "$PUBLIC_IP"
+      $NMAP_CMD -p- "$TARGET_IP"
       ;;
     2)
       local PORTS
@@ -207,10 +278,10 @@ portscan() {
         return 1
       fi
       log
-      log "$INFO Running TARGETED TCP port scan on $PUBLIC_IP"
-      log "$INFO Scanning the following ports $PORTS"
+      log "$INFO Running TARGETED TCP port scan on $TARGET_IP"
+      log "$INFO Scanning the following ports: $PORTS"
       log
-      $NMAP_CMD -p "$PORTS" "$PUBLIC_IP"
+      $NMAP_CMD -p "$PORTS" "$TARGET_IP"
       ;;
     *)
       log "$ERR Invalid option"
