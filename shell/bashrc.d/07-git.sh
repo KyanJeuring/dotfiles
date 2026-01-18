@@ -717,34 +717,36 @@ grescue() {
   }
 
   {
-    idx = NR - 1
+    idx  = NR - 1
     hash = $1
 
-    # extract relative time "(x minutes ago)"
-    match($0, /\([^)]+\)$/)
-    time = substr($0, RSTART, RLENGTH)
+    # extract relative time from HEAD@{...}
+    time = ""
+    if (match($0, /HEAD@\{([^}]+)\}/, m)) {
+      time = "(" m[1] ")"
+    }
 
-    if ($0 ~ /commit:/) {
-      msg = $0
-      sub(/^.*commit: /, "", msg)
-      sub(/ \([^)]+\)$/, "", msg)
+    # remove hash and HEAD@{...}: prefix
+    line = $0
+    sub(/^[a-f0-9]+ HEAD@\{[^}]+\}: /, "", line)
 
-      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-35s %s%s%s  %s\n",
+    if (line ~ /^commit:/) {
+      sub(/^commit: /, "", line)
+
+      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-45s %s%s%s  %s\n",
         blue, idx, reset,
         green, reset,
-        msg,
+        line,
         blue, time, reset,
         hash
     }
-    else if ($0 ~ /reset:/) {
-      target = $0
-      sub(/^.*reset: moving to /, "", target)
-      sub(/ \([^)]+\)$/, "", target)
+    else if (line ~ /^reset:/) {
+      sub(/^reset: moving to /, "", line)
 
-      printf "%sHEAD@{%d}%s  %s[MOVE]%s  reset --> %-20s %s%s%s  %s\n",
+      printf "%sHEAD@{%d}%s  %s[MOVE  ]%s  reset --> %-25s %s%s%s  %s\n",
         blue, idx, reset,
         yellow, reset,
-        target,
+        line,
         blue, time, reset,
         hash
     }
