@@ -709,17 +709,24 @@ grescue() {
   log
 
   git reflog --date=relative | head -n 20 | awk '
-  BEGIN {
-    green = "\033[0;32m"
-    yellow = "\033[0;33m"
-    reset = "\033[0m"
-  }
   {
-    idx = NR-1
+    idx = NR - 1
+    hash = $1
+
+    # extract relative time (inside parentheses at end)
+    match($0, /\([^)]+\)$/)
+    time = substr($0, RSTART, RLENGTH)
+
     if ($0 ~ /commit:/) {
-      printf "  HEAD@{%d}  %s[COMMIT]%s  %s\n", idx, green, reset, $0
+      sub(/^.*commit: /, "", $0)
+      sub(/ \([^)]+\)$/, "", $0)
+      printf "HEAD@{%d}  [COMMIT]  %-30s %s  %s\n",
+             idx, $0, time, hash
     } else {
-      printf "  HEAD@{%d}  %s[MOVE  ]%s  %s\n", idx, yellow, reset, $0
+      sub(/^.*reset: moving to /, "", $0)
+      sub(/ \([^)]+\)$/, "", $0)
+      printf "HEAD@{%d}  [MOVE  ]  reset → %-15s %s  %s\n",
+             idx, $0, time, hash
     }
   }'
 
