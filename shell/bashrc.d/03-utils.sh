@@ -181,9 +181,6 @@ portscan() {
 
   local TARGET_IP
 
-  # --------------------------------------------------
-  # Determine target IP
-  # --------------------------------------------------
   if [[ -n "${1:-}" ]]; then
     TARGET_IP="$1"
 
@@ -285,6 +282,7 @@ getjson() {
 # Weather utility
 # ==================================================
 
+### Show weather for a location (default: current location)
 weather() {
   local location="${1:-}"
   curl -fsS "wttr.in/${location}?m" || echo "Weather unavailable"
