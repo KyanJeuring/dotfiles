@@ -307,7 +307,7 @@ whatwillpromote() {
 }
 
 ## Show active git SSH host for current repository
-git-host-status() {
+ghost() {
   local url host repo
 
   root || return 1
@@ -331,8 +331,23 @@ git-host-status() {
   fi
 }
 
+## Show git context (branch, upstream, ahead, behind)
+gwhere() {
+  local b upstream ahead behind
+  b=$(git branch --show-current 2>/dev/null) || return 1
+  upstream=$(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo "-")
+  ahead=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+  behind=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
+
+  info "Git context"
+  printf "  Branch:   %s\n" "$b"
+  printf "  Upstream: %s\n" "$upstream"
+  printf "  Ahead:    %s\n" "$ahead"
+  printf "  Behind:   %s\n" "$behind"
+}
+
 # ==================================================
-# Git staging, committing & restore
+# Git staging, committing
 # ==================================================
 
 ## Stage all changes
@@ -398,6 +413,28 @@ gca() {
   git commit --amend "${args[@]}" && ok "Last commit amended"
 }
 
+gsquashlast() {
+  if [[ -z "$1" ]]; then
+    err "Usage: gsquashlast <number>"
+    return 1
+  fi
+
+  local n="$1"
+  if ! [[ "$n" =~ ^[0-9]+$ ]]; then
+    err "Usage: gsquashlast <number>"
+    return 1
+  fi
+
+  warn "Squashing last $n commits"
+  git reset --soft "HEAD~$n" &&
+  info "Commits squashed (soft)"
+  info "Run gc to create the final commit"
+}
+
+# ==================================================
+# Git working tree control
+# ==================================================
+
 ## Restore unstaged changes
 gr() {
   if git diff --quiet; then
@@ -426,6 +463,36 @@ grs() {
   ok "Staged changes restored"
 }
 
+## Clean working tree (discard all uncommitted changes)
+gcleanworktree() {
+  warn "This will discard ALL uncommitted changes"
+  confirm "Continue?" || return 1
+  git reset --hard &&
+  git clean -fd &&
+  ok "Working tree cleaned"
+}
+
+## Stash all changes (including untracked)
+gstash() {
+  if [[ -z "$1" ]]; then
+    warn "No stash message provided, using 'wip'"
+  fi
+
+  git stash push -u -m "${1:-wip}" &&
+  ok "Changes stashed"
+}
+
+## Pop latest stash
+gpop() {
+  git stash pop &&
+  ok "Stash applied"
+}
+
+## List stashes
+gstashlist() {
+  git stash list
+}
+
 # ==================================================
 # Git sync & fetch
 # ==================================================
@@ -446,7 +513,7 @@ gabort() {
 }
 
 # ==================================================
-# Git undo — local commits
+# Git recovery & repair - local
 # ==================================================
 
 ## Undo last commit (soft)
@@ -466,6 +533,41 @@ gus() {
   git reset --soft HEAD~1 &&
   ok "Last commit undone (soft)"
   info "Use 'gus --abort' to restore previous HEAD if needed"
+}
+
+## Undo last N commits (soft)
+gusn() {
+  local n="$1"
+
+  [[ "$n" =~ ^[0-9]+$ ]] || {
+    err "Usage: gusn <number>"
+    return 1
+  }
+
+  (( n < 1 )) && {
+    err "Number must be >= 1"
+    return 1
+  }
+
+  git rev-parse HEAD >/dev/null 2>&1 || {
+    err "Repository has no commits"
+    return 1
+  }
+
+  local count
+  count=$(git rev-list --count HEAD)
+
+  (( count <= n )) && {
+    err "Cannot undo $n commits (repository has $count)"
+    return 1
+  }
+
+  git reset --soft "HEAD~$n" || return 1
+
+  ok "Last $n commit(s) undone (soft)"
+  info "Next steps:"
+  info "  - Run 'gc' to squash everything into one commit"
+  info "  - Run 'grs' to unstage everything and re-commit selectively"
 }
 
 ## Undo last commit (hard)
@@ -494,8 +596,126 @@ guh() {
   info "Use 'guh --abort' immediately to restore previous HEAD if needed"
 }
 
+## Undo last N commits (hard)
+guhn() {
+  local n="$1"
+
+  [[ "$n" =~ ^[0-9]+$ ]] || {
+    err "Usage: guhn <number>"
+    return 1
+  }
+
+  (( n < 1 )) && {
+    err "Number must be >= 1"
+    return 1
+  }
+
+  git rev-parse HEAD >/dev/null 2>&1 || {
+    err "Repository has no commits"
+    return 1
+  }
+
+  local count
+  count=$(git rev-list --count HEAD)
+
+  (( count <= n )) && {
+    err "Cannot discard $n commits (repository has $count)"
+    return 1
+  }
+
+  warn "This will permanently discard the last $n commit(s)"
+  confirm "Continue?" || return 1
+
+  git reset --hard "HEAD~$n" &&
+  ok "Last $n commit(s) discarded (hard)"
+}
+
+## Move latest local commit to another branch
+gmove() {
+  local target="$1"
+  local current orig ahead
+
+  current="$(git branch --show-current 2>/dev/null)" || {
+    err "Not inside a git repository"
+    return 1
+  }
+
+  if [[ -z "$target" ]]; then
+    err "Usage: gmove <target-branch>"
+    return 1
+  fi
+
+  if [[ "$current" == "$target" ]]; then
+    err "Target branch is the current branch"
+    return 1
+  fi
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    err "Working tree is dirty"
+    err "Commit or stash your changes before moving commits"
+    return 1
+  fi
+
+  if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+    err "No commit to move"
+    return 1
+  fi
+
+  if git rev-parse @{u} >/dev/null 2>&1; then
+    ahead=$(git rev-list --count @{u}..HEAD)
+    if [[ "$ahead" -eq 0 ]]; then
+      err "Latest commit is already pushed to upstream"
+      return 1
+    fi
+  fi
+
+  if [[ "$current" == "main" ]]; then
+    warn "You are moving a commit off MAIN"
+    warn "This is usually correct, but double-check intent"
+    confirm "Continue?" || return 1
+  fi
+
+  info "Moving latest commit from '$current' --> '$target'"
+
+  orig="$current"
+
+  git switch "$target" || return 1
+
+  if ! git cherry-pick "$orig@{0}"; then
+    err "Cherry-pick failed — aborting"
+    git cherry-pick --abort >/dev/null 2>&1 || true
+    git switch "$orig" >/dev/null 2>&1 || true
+    return 1
+  fi
+
+  git switch "$orig" || return 1
+  git reset --hard HEAD~1 || return 1
+
+  ok "Commit successfully moved to '$target'"
+}
+
+## Show recent HEAD positions
+grescue() {
+  info "Recent HEAD positions"
+  git reflog --date=relative | head -n 15
+}
+
+## Restore HEAD to a previous position
+grestorehead() {
+  [[ -z "$1" ]] && {
+    err "Usage: grestorehead <reflog-id>"
+    return 1
+  }
+
+  warn "Resetting HEAD to $1"
+  confirm "Continue?" || return 1
+
+  git reset --hard "$1" &&
+  ok "HEAD restored"
+}
+
 # ==================================================
-# Git undo — remote commits (DANGEROUS)
+# Git recovery & repair - remote
 # ==================================================
 
 ## Undo last remote commit (soft)
@@ -568,7 +788,7 @@ workon() {
 
   if ! git diff --quiet || ! git diff --cached --quiet; then
     err "Working tree is dirty"
-    info "Commit or stash your changes before switching branches"
+    err "Commit or stash your changes before switching branches"
     return 1
   fi
 
@@ -661,7 +881,7 @@ syncdev() {
   info "Creating backup tag: $backup_tag"
   git tag "$backup_tag" || return 1
 
-  info "Resetting dev → origin/main"
+  info "Resetting dev --> origin/main"
   git reset --hard origin/main || return 1
 
   if [[ "$current" != "dev" ]]; then
@@ -678,7 +898,7 @@ syncdev() {
 # Git release / promotion
 # ==================================================
 
-## Promote source → target and create a release tag
+## Promote source --> target and create a release tag
 promote() {
   set -uo pipefail
 
@@ -687,8 +907,8 @@ promote() {
 
   if [[ $# -eq 1 ]]; then
     warn "Usage:"
-    warn "  promote                   # promote dev → main"
-    warn "  promote <source> <target>  # promote source → target"
+    warn "  promote                    # promote dev --> main"
+    warn "  promote <source> <target>  # promote source --> target"
     return 1
   elif [[ $# -eq 2 ]]; then
     SRC_BRANCH="$1"
@@ -774,7 +994,7 @@ promote() {
   info "Pulling latest $TARGET_BRANCH"
   git pull origin "$TARGET_BRANCH" || return 1
 
-  info "Fast-forwarding $TARGET_BRANCH → $SRC_BRANCH"
+  info "Fast-forwarding $TARGET_BRANCH --> $SRC_BRANCH"
   git merge --ff-only "$SRC_BRANCH" || return 1
 
   info "Pushing $TARGET_BRANCH"
@@ -786,8 +1006,8 @@ promote() {
 
   info "Tagging promote"
   tag="promote-$SRC_BRANCH-to-$TARGET_BRANCH-$(date +%Y%m%d-%H%M%S)"
-  git tag -a "$tag" -m "Promote $SRC_BRANCH → $TARGET_BRANCH" || return 1
+  git tag -a "$tag" -m "Promote $SRC_BRANCH --> $TARGET_BRANCH" || return 1
   git push origin "$tag" || return 1
 
-  ok "Promote successful ($SRC_BRANCH → $TARGET_BRANCH, tag: $tag)"
+  ok "Promote successful ($SRC_BRANCH --> $TARGET_BRANCH, tag: $tag)"
 }

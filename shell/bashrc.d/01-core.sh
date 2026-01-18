@@ -13,5 +13,6 @@ DEPRECATED_FUNCTIONS=(
   dresetstack
   update-dotfiles
   update_dotfiles
-  is-public-ipv4 
+  is-public-ipv4
+  git-host-status
 )
