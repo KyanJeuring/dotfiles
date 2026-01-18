@@ -710,44 +710,53 @@ grescue() {
 
   git reflog --date=relative | head -n 20 | awk '
   BEGIN {
+    blue   = "\033[0;34m"
     green  = "\033[0;32m"
     yellow = "\033[0;33m"
-    blue   = "\033[0;34m"
     reset  = "\033[0m"
+
+    msg_width = 45
   }
 
   {
     idx  = NR - 1
     hash = $1
 
-    # extract relative time from HEAD@{...}
+    # Extract relative time from HEAD@{...}
     time = ""
     if (match($0, /HEAD@\{([^}]+)\}/, m)) {
       time = "(" m[1] ")"
     }
 
-    # remove hash and HEAD@{...}: prefix
+    # Strip "<hash> HEAD@{...}: " prefix
     line = $0
     sub(/^[a-f0-9]+ HEAD@\{[^}]+\}: /, "", line)
 
+    # Truncate helper
+    function trunc(s, w) {
+      return (length(s) > w) ? substr(s, 1, w - 1) "…" : s
+    }
+
     if (line ~ /^commit:/) {
       sub(/^commit: /, "", line)
+      msg = trunc(line, msg_width)
 
-      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-45s %s%s%s  %s\n",
+      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-*s %s%s%s  %s\n",
         blue, idx, reset,
         green, reset,
-        line,
-        blue, time, reset,
+        msg_width, msg,
+        time, reset,
         hash
     }
     else if (line ~ /^reset:/) {
       sub(/^reset: moving to /, "", line)
+      msg = trunc("reset --> " line, msg_width)
 
-      printf "%sHEAD@{%d}%s  %s[MOVE  ]%s  reset --> %-25s %s%s%s  %s\n",
+      printf "%sHEAD@{%d}%s  %s[MOVE  ]%s  %-*s %s%s%s  %s\n",
         blue, idx, reset,
         yellow, reset,
-        line,
-        blue, time, reset,
+        msg_width, msg,
+        time, reset,
         hash
     }
   }'
