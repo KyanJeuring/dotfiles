@@ -17,7 +17,7 @@ dpsa() {
 ## Grep running containers by name
 dpsg() {
   if [ -z "$1" ]; then
-    echo "Usage: dpsg <pattern>"
+    err "Usage: dpsg <pattern>"
     return 1
   fi
   docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}" | grep -i "$1"
@@ -36,7 +36,7 @@ dport() {
 ## Show IP address of a container
 dip() {
   if [ -z "$1" ]; then
-    echo "Usage: dip <container-name>"
+    err "Usage: dip <container-name>"
     return 1
   fi
   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$1"
@@ -109,7 +109,7 @@ dlogs() {
 ## Follow logs for a single service (Ctrl+C to exit)
 dlog() {
   if [ -z "$1" ]; then
-    echo "Usage: dlog <service-name>"
+    err "Usage: dlog <service-name>"
     return 1
   fi
   docker compose logs -f --tail=100 "$1"
@@ -124,7 +124,7 @@ dlogs_last() {
 ## Show last logs for a single service (paged)
 dlog_last() {
   if [ -z "$1" ]; then
-    echo "Usage: dlog_last <service-name> [lines]"
+    err "Usage: dlog_last <service-name> [lines]"
     return 1
   fi
   local lines="${2:-100}"
@@ -139,7 +139,7 @@ dstats() {
 ## Inspect a container (JSON output)
 dinspect() {
   if [ -z "$1" ]; then
-    echo "Usage: dinspect <container-name>"
+    err "Usage: dinspect <container-name>"
     return 1
   fi
   docker inspect "$1" | less
@@ -152,7 +152,7 @@ dinspect() {
 ## Exec into a running container (default shell)
 dexec() {
   if [ -z "$1" ]; then
-    echo "Usage: dexec <service-name>"
+    err "Usage: dexec <service-name>"
     return 1
   fi
   docker compose exec "$1" sh
@@ -161,7 +161,7 @@ dexec() {
 ## Run one-off commands in a service
 drun() {
   if [ -z "$1" ]; then
-    echo "Usage: drun <service-name> <command>"
+    err "Usage: drun <service-name> <command>"
     return 1
   fi
   shift
@@ -185,7 +185,7 @@ dvol() {
 ## Remove a docker volume
 dvolrm() {
   if [ -z "$1" ]; then
-    echo "Usage: dvolrm <volume-name>"
+    err "Usage: dvolrm <volume-name>"
     return 1
   fi
   docker volume rm "$1"
@@ -194,7 +194,7 @@ dvolrm() {
 ## Inspect a docker volume
 dvolinspect() {
   if [ -z "$1" ]; then
-    echo "Usage: dvolinspect <volume-name>"
+    err "Usage: dvolinspect <volume-name>"
     return 1
   fi
   docker volume inspect "$1"
@@ -266,7 +266,7 @@ dnet() {
 ## Inspect a docker network
 dnetinspect() {
   if [ -z "$1" ]; then
-    echo "Usage: dnetinspect <network-name>"
+    err "Usage: dnetinspect <network-name>"
     return 1
   fi
   docker network inspect "$1"

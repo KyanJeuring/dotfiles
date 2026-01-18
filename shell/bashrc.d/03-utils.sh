@@ -55,7 +55,7 @@ bashrc() {
 }
 
 ## Update dotfiles repository and reload bashrc
-update-dotfiles() {
+update_dotfiles() {
   local repo_dir install_script
 
   repo_dir="$HOME/dotfiles"
@@ -130,7 +130,7 @@ myipinfo() {
 ## Show IP info for a specific IP address
 ipinfo() {
   if [ -z "$1" ]; then
-    echo "Usage: ipinfo <ip-address>"
+    err "Usage: ipinfo <ip-address>"
     return 1
   fi
 
@@ -142,43 +142,38 @@ ipinfo() {
 }
 
 ## Check if an IPv4 address is public
-is-public-ipv4() {
+is_public_ipv4() {
   if [ -z "$1" ]; then
-    echo "Usage: is-public-ipv4 <ip-address>"
+    err "Usage: is_public_ipv4 <ip-address>"
     return 1
   fi
 
   local ip="$1"
 
-  # Basic IPv4 format check
-  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+    || { err "Invalid IP format"; return 1; }
 
-  # Split octets
   IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
 
-  # Each octet must be 0–255
   for o in "$o1" "$o2" "$o3" "$o4"; do
-    ((o >= 0 && o <= 255)) || return 1
+    ((o >= 0 && o <= 255)) \
+      || { err "IP octet out of range (0-255)"; return 1; }
   done
 
-  # Reject loopback
-  ((o1 == 127)) && return 1
+  ((o1 == 127)) && { err "IP is a loopback address"; return 1; }
+  ((o1 == 10)) && { err "IP is a private address"; return 1; }
+  ((o1 == 192 && o2 == 168)) && { err "IP is a private address"; return 1; }
+  ((o1 == 172 && o2 >= 16 && o2 <= 31)) && { err "IP is a private address"; return 1; }
+  ((o1 == 169 && o2 == 254)) && { err "IP is a link-local address"; return 1; }
 
-  # Reject private ranges
-  ((o1 == 10)) && return 1
-  ((o1 == 192 && o2 == 168)) && return 1
-  ((o1 == 172 && o2 >= 16 && o2 <= 31)) && return 1
-
-  # Reject link-local
-  ((o1 == 169 && o2 == 254)) && return 1
-
+  ok "IP is a public address"
   return 0
 }
 
 ## Show HTTP status code for a URL
 httpstatus() {
   if [ -z "$1" ]; then
-    echo "Usage: httpstatus <url>"
+    err "Usage: httpstatus <url>"
     return 1
   fi
   curl -o /dev/null -s -w "%{http_code}\n" "$1"
@@ -187,7 +182,7 @@ httpstatus() {
 ## Show HTTP response headers
 httpheaders() {
   if [ -z "$1" ]; then
-    echo "Usage: httpheaders <url>"
+    err "Usage: httpheaders <url>"
     return 1
   fi
   curl -sI "$1"
@@ -196,7 +191,7 @@ httpheaders() {
 ## Resolve a domain via HTTP request
 dnscheck() {
   if [ -z "$1" ]; then
-    echo "Usage: dnscheck <domain>"
+    err "Usage: dnscheck <domain>"
     return 1
   fi
   ( curl -sI "https://$1" || curl -sI "http://$1" ) | head -n 1
@@ -204,11 +199,11 @@ dnscheck() {
 
 ## Scan open TCP ports on a public IP (default: self)
 portscan() {
-  log "$INFO Starting port scan utility"
+  info "Starting port scan utility"
   log
 
   if ! command -v nmap >/dev/null 2>&1; then
-    log "$ERR nmap is not installed"
+    err "nmap is not installed"
     return 1
   fi
 
@@ -217,39 +212,39 @@ portscan() {
   if [[ -n "${1:-}" ]]; then
     TARGET_IP="$1"
 
-    if ! is-public-ipv4 "$TARGET_IP"; then
-      log "$ERR Invalid target IP: $TARGET_IP"
-      log "$ERR Private, loopback, and link-local IPs are not allowed"
+    if ! is_public_ipv4 "$TARGET_IP"; then
+      err "Invalid target IP: $TARGET_IP"
+      err "Private, loopback, and link-local IPs are not allowed"
       return 1
     fi
 
-    log "$WARN You are about to scan a user-specified PUBLIC IP: $TARGET_IP"
-    log "$WARN Only scan systems you own or have permission to test"
+    warn "You are about to scan a user-specified PUBLIC IP: $TARGET_IP"
+    warn "Only scan systems you own or have permission to test"
     confirm "Continue?" || return 1
   else
-    log "$INFO Detecting public IP..."
+    info "Detecting public IP..."
     TARGET_IP="$(myip || true)"
 
     if [[ -z "$TARGET_IP" ]]; then
-      log "$ERR Could not determine public IP"
+      err "Could not determine public IP"
       return 1
     fi
 
-    if ! is-public-ipv4 "$TARGET_IP"; then
-      log "$ERR Detected IP is not a valid public IPv4 address: $TARGET_IP"
+    if ! is_public_ipv4 "$TARGET_IP"; then
+      err "Detected IP is not a valid public IPv4 address: $TARGET_IP"
       return 1
     fi
 
-    log "$OK Public IP detected: $TARGET_IP"
+    info "Public IP detected: $TARGET_IP"
     log
-    log "$INFO Public IP information:"
+    info "Public IP information:"
     myipinfo
     log
   fi
 
-  log "$INFO Select scan type:"
-  log "  1) Full scan (all TCP ports)"
-  log "  2) Targeted scan (specific ports)"
+  info "Select scan type:"
+  info "  1) Full scan (all TCP ports)"
+  info "  2) Targeted scan (specific ports)"
   log
 
   local CHOICE
@@ -264,9 +259,9 @@ portscan() {
 
   case "$CHOICE" in
     1)
-      log "$INFO Running FULL TCP port scan on $TARGET_IP"
-      log "$INFO Scanning all 65535 TCP ports"
-      log "$WARN This may take several minutes to complete"
+      info "Running FULL TCP port scan on $TARGET_IP"
+      info "Scanning all 65535 TCP ports"
+      warn "This may take several minutes to complete"
       log
       $NMAP_CMD -p- "$TARGET_IP"
       ;;
@@ -274,22 +269,22 @@ portscan() {
       local PORTS
       read -rp "Enter ports (e.g. 22,80,443,2222): " PORTS
       if [[ -z "${PORTS// }" ]]; then
-        log "$ERR No ports specified"
+        err "No ports specified"
         return 1
       fi
       log
-      log "$INFO Running TARGETED TCP port scan on $TARGET_IP"
-      log "$INFO Scanning the following ports: $PORTS"
+      info "Running TARGETED TCP port scan on $TARGET_IP"
+      info "Scanning the following ports: $PORTS"
       log
       $NMAP_CMD -p "$PORTS" "$TARGET_IP"
       ;;
     *)
-      log "$ERR Invalid option"
+      err "Invalid option"
       return 1
       ;;
   esac
 
-  log "$OK Scan completed"
+  ok "Scan completed"
   log
 }
 
