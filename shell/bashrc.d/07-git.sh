@@ -718,24 +718,21 @@ grescue() {
     msg_width = 45
   }
 
+  function trunc(s, w) {
+    return (length(s) > w) ? substr(s, 1, w - 1) "…" : s
+  }
+
   {
     idx  = NR - 1
     hash = $1
 
-    # Extract relative time from HEAD@{...}
     time = ""
     if (match($0, /HEAD@\{([^}]+)\}/, m)) {
       time = "(" m[1] ")"
     }
 
-    # Strip "<hash> HEAD@{...}: " prefix
     line = $0
     sub(/^[a-f0-9]+ HEAD@\{[^}]+\}: /, "", line)
-
-    # Truncate helper
-    function trunc(s, w) {
-      return (length(s) > w) ? substr(s, 1, w - 1) "…" : s
-    }
 
     if (line ~ /^commit:/) {
       sub(/^commit: /, "", line)
@@ -745,7 +742,7 @@ grescue() {
         blue, idx, reset,
         green, reset,
         msg_width, msg,
-        time, reset,
+        blue, time, reset,
         hash
     }
     else if (line ~ /^reset:/) {
@@ -756,7 +753,7 @@ grescue() {
         blue, idx, reset,
         yellow, reset,
         msg_width, msg,
-        time, reset,
+        blue, time, reset,
         hash
     }
   }'
