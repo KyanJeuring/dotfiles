@@ -709,24 +709,44 @@ grescue() {
   log
 
   git reflog --date=relative | head -n 20 | awk '
+  BEGIN {
+    green  = "\033[0;32m"
+    yellow = "\033[0;33m"
+    blue   = "\033[0;34m"
+    reset  = "\033[0m"
+  }
+
   {
     idx = NR - 1
     hash = $1
 
-    # extract relative time (inside parentheses at end)
+    # extract relative time "(x minutes ago)"
     match($0, /\([^)]+\)$/)
     time = substr($0, RSTART, RLENGTH)
 
     if ($0 ~ /commit:/) {
-      sub(/^.*commit: /, "", $0)
-      sub(/ \([^)]+\)$/, "", $0)
-      printf "HEAD@{%d}  [COMMIT]  %-30s %s  %s\n",
-             idx, $0, time, hash
-    } else {
-      sub(/^.*reset: moving to /, "", $0)
-      sub(/ \([^)]+\)$/, "", $0)
-      printf "HEAD@{%d}  [MOVE  ]  reset → %-15s %s  %s\n",
-             idx, $0, time, hash
+      msg = $0
+      sub(/^.*commit: /, "", msg)
+      sub(/ \([^)]+\)$/, "", msg)
+
+      printf "%sHEAD@{%d}%s  %s[COMMIT]%s  %-35s %s%s%s  %s\n",
+        blue, idx, reset,
+        green, reset,
+        msg,
+        blue, time, reset,
+        hash
+    }
+    else if ($0 ~ /reset:/) {
+      target = $0
+      sub(/^.*reset: moving to /, "", target)
+      sub(/ \([^)]+\)$/, "", target)
+
+      printf "%sHEAD@{%d}%s  %s[MOVE]%s  reset --> %-20s %s%s%s  %s\n",
+        blue, idx, reset,
+        yellow, reset,
+        target,
+        blue, time, reset,
+        hash
     }
   }'
 
