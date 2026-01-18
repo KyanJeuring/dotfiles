@@ -1,7 +1,7 @@
 [[ "$(uname -s)" != Linux* ]] && return
 
 # ==================================================
-# Linux system overview
+# System overview
 # ==================================================
 
 ## Show system uptime and load
@@ -25,7 +25,7 @@ dfh() {
 }
 
 # ==================================================
-# Linux process inspection
+# Process inspection
 # ==================================================
 
 ## Show top CPU-consuming processes
@@ -49,26 +49,7 @@ psfind() {
 }
 
 # ==================================================
-# Linux networking
-# ==================================================
-
-## Show IP addresses
-ipaddr() {
-  ip addr show
-}
-
-## Show routing table
-iproute() {
-  ip route show
-}
-
-## Show listening ports
-ports() {
-  ss -tulpn
-}
-
-# ==================================================
-# Linux storage & filesystems
+# Storage & filesystems
 # ==================================================
 
 ## Show mounted filesystems
@@ -82,7 +63,7 @@ lsblkf() {
 }
 
 # ==================================================
-# Linux hardware info
+# Hardware info
 # ==================================================
 
 ## Show PCI devices
@@ -96,7 +77,7 @@ usb() {
 }
 
 # ==================================================
-# Linux permissions & ownership
+# Permissions & Ownership
 # ==================================================
 
 ## Show numeric permissions of a file
@@ -115,7 +96,7 @@ owner() {
 }
 
 # ==================================================
-# Linux kernel & OS information
+# Kernel & OS information
 # ==================================================
 
 ## Show kernel version
@@ -129,7 +110,7 @@ osinfo() {
 }
 
 # ==================================================
-# Linux system management
+# System Management
 # ==================================================
 
 ## Update system packages (distro-aware)

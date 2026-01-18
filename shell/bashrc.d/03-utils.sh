@@ -113,13 +113,80 @@ utctime() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
-## Show public IP address
-myip() {
+## Show local LAN IPv4 addresses
+lanip() {
+  info "Local IPv4 addresses"
+  log
+
+  ip -4 addr show \
+    | awk '
+      /inet / && !/127.0.0.1/ {
+        printf "  %-18s  %s\n", $2, $NF
+      }'
+
+  log
+}
+
+## Show IP addresses
+ipaddr() {
+  info "IP addresses"
+  log
+
+  ip addr show \
+    | awk '
+      /^[0-9]+:/ {
+        iface=$2; sub(":", "", iface)
+        printf "[%s]\n", iface
+      }
+      /inet / {
+        printf "  IPv4  %-18s\n", $2
+      }
+      /inet6 / {
+        printf "  IPv6  %-18s\n", $2
+      }'
+
+  log
+}
+
+## Show routing table
+iproute() {
+  info "Routing table"
+  log
+
+  ip route show \
+    | awk '
+      {
+        printf "  %-18s -> %s\n", $1, $0
+      }'
+
+  log
+}
+
+## Show listening ports
+ports() {
+  info "Listening ports"
+  log
+
+  ss -tulpn \
+    | awk 'NR==1 {print "  " $0; next} {print "  " $0}'
+
+  log
+}
+
+portsl() {
+  info "Listening ports (LISTEN state)"
+  log
+  ss -tulpn state listening
+  log
+}
+
+## Show public IPv4 address
+pubip() {
   curl -fsS https://api.ipify.org || curl -fsS https://ifconfig.me || echo "IP unavailable"
 }
 
-## Show public IP and rough geolocation
-myipinfo() {
+## Show public IPv4 address and rough geolocation
+pubipinfo() {
   if command -v jq >/dev/null 2>&1; then
     curl -fsS https://ipinfo.io 2>/dev/null | jq
   else
@@ -127,7 +194,7 @@ myipinfo() {
   fi
 }
 
-## Show IP info for a specific IP address
+## Show IP information for a specific IPv4 address
 ipinfo() {
   if [ -z "$1" ]; then
     err "Usage: ipinfo <ip-address>"
@@ -168,7 +235,6 @@ dnscheck() {
   ( curl -sI "https://$1" || curl -sI "http://$1" ) | head -n 1
 }
 
-## Scan open TCP ports on a public IP (default: self)
 ## Scan open TCP ports on a public IPv4 address (default: self)
 portscan() {
   info "Starting port scan utility"
@@ -195,7 +261,7 @@ portscan() {
     log
   else
     info "Detecting public IP..."
-    TARGET_IP="$(myip || true)"
+    TARGET_IP="$(pubip || true)"
 
     if [[ -z "$TARGET_IP" ]]; then
       err "Could not determine public IP"
@@ -208,7 +274,7 @@ portscan() {
     fi
 
     info "Public IP information:"
-    myipinfo
+    pubipinfo
     log
   fi
 
