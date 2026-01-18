@@ -282,7 +282,7 @@ getjson() {
 # Weather utility
 # ==================================================
 
-### Show weather for a location (default: current location)
+## Show weather for a location (default: current location)
 weather() {
   local location="${1:-}"
   curl -fsS "wttr.in/${location}?m" || echo "Weather unavailable"
