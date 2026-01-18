@@ -212,15 +212,11 @@ portscan() {
   if [[ -n "${1:-}" ]]; then
     TARGET_IP="$1"
 
-    if ! is_public_ipv4 "$TARGET_IP"; then
+    if ! is_public_ipv4 "$TARGET_IP" 2>/dev/null; then
       err "Invalid target IP: $TARGET_IP"
       err "Private, loopback, and link-local IPs are not allowed"
       return 1
     fi
-
-    warn "You are about to scan a user-specified PUBLIC IP: $TARGET_IP"
-    warn "Only scan systems you own or have permission to test"
-    confirm "Continue?" || return 1
   else
     info "Detecting public IP..."
     TARGET_IP="$(myip || true)"
@@ -230,7 +226,7 @@ portscan() {
       return 1
     fi
 
-    if ! is_public_ipv4 "$TARGET_IP"; then
+    if ! is_public_ipv4 "$TARGET_IP" 2>/dev/null; then
       err "Detected IP is not a valid public IPv4 address: $TARGET_IP"
       return 1
     fi
@@ -268,10 +264,12 @@ portscan() {
     2)
       local PORTS
       read -rp "Enter ports (e.g. 22,80,443,2222): " PORTS
+
       if [[ -z "${PORTS// }" ]]; then
         err "No ports specified"
         return 1
       fi
+
       log
       info "Running TARGETED TCP port scan on $TARGET_IP"
       info "Scanning the following ports: $PORTS"
