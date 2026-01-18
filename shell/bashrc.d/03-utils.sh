@@ -189,7 +189,6 @@ portscan() {
       return 1
     fi
   else
-    info "Detecting public IP..."
     TARGET_IP="$(myip || true)"
 
     if [[ -z "$TARGET_IP" ]]; then
