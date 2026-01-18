@@ -350,6 +350,19 @@ getjson() {
 
 ## Show weather for a location (default: current location)
 weather() {
-  local location="${1:-}"
-  curl -fsS "wttr.in/${location}?m" || echo "Weather unavailable"
+  if [ "$#" -gt 1 ]; then
+    err "Location contains spaces — use quotes"
+    return 1
+  fi
+
+  local location="${1:-Emmen,Drenthe,NL}"
+  location="${location// /%20}"
+
+  info "Weather for $location"
+  log
+
+  curl -fsS "wttr.in/${location}?m" \
+    || warn "Weather unavailable"
+
+  log
 }
