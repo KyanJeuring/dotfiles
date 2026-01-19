@@ -378,6 +378,102 @@ ghead() {
   info "  grestorehead HEAD@{N}"
 }
 
+## Show git diff for file(s)
+gdiff() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 1 ]; then
+    err "Usage: gdiff <file>"
+    return 1
+  fi
+
+  git diff HEAD -- "$@"
+}
+
+## Show staged git diff for file(s)
+gdiffs() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 1 ]; then
+    err "Usage: gdiffs <file>"
+    return 1
+  fi
+
+  git diff --cached -- "$@"
+}
+
+## Show git diff between two commits for file(s)
+gdiffc() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 2 ]; then
+    err "Usage: gdiffc <commit1> <commit2> [file]"
+    return 1
+  fi
+
+  local ref1="$1"
+  local ref2="$2"
+  shift 2
+
+  git diff "$ref1" "$ref2" -- "$@"
+}
+
+## Show git diff between two branches for file(s)
+gdiffb() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 2 ]; then
+    err "Usage: gdiffb <branch1> <branch2> [file]"
+    return 1
+  fi
+
+  local branch1="$1"
+  local branch2="$2"
+  shift 2
+
+  git diff "$branch1" "$branch2" -- "$@"
+}
+
+## Show git diff against remote branch for file(s)
+gdiffp() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 1 ]; then
+    err "Usage: gdiffp <file>"
+    return 1
+  fi
+
+  local branch
+  branch=$(git branch --show-current 2>/dev/null)
+
+  if [ -z "$branch" ]; then
+    err "Detached HEAD — cannot diff against origin"
+    return 1
+  fi
+
+  if ! git rev-parse --verify "origin/$branch" >/dev/null 2>&1; then
+    err "Remote branch origin/$branch does not exist"
+    return 1
+  fi
+
+  git fetch origin >/dev/null 2>&1 || {
+    err "Failed to fetch origin"
+    return 1
+  }
+
+  git diff "origin/$branch" -- "$@"
+}
+
 ## Show commits pending promotion
 gdiffpromote() {
   git log main..dev --oneline --decorate
