@@ -159,8 +159,8 @@ install_symlink() {
   local dest="$2"
   local name="$3"
 
-  remove_existing_dir "$dest"
   backup_real_file "$dest"
+  remove_existing_dir "$dest"
   remove_wrong_symlink "$dest" "$src"
 
   info "Installing $name (Unix)"
@@ -195,6 +195,7 @@ install_symlink "$GITCONFIG_SRC" "$GITCONFIG_DEST" "gitconfig"
 install_symlink "$GITIGNORE_GLOBAL_SRC" "$GITIGNORE_GLOBAL_DEST" "global gitignore"
 install_symlink "$NVIM_SRC" "$NVIM_DEST" "neovim config"
 
+git config --global core.pager "less -FRX"
 git config --global core.excludesfile "$GITIGNORE_GLOBAL_DEST"
 ok "Git configured to use global gitignore"
 

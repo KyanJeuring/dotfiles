@@ -20,7 +20,6 @@
 # ==================================================
 [core]
     editor = vim.exe -f
-    pager = less!
     autocrlf = input
     whitespace = trailing-space,space-before-tab
 
@@ -52,6 +51,7 @@
 [push]
     default = simple
     autoSetupRemote = true
+    withLease = true
     followTags = true
 
 # ==================================================
