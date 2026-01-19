@@ -273,7 +273,16 @@ decfile() {
 # Navigation helpers
 # ==================================================
 
-## Find and change directory
+## Find and change directory under $HOME
+cda() {
+  command -v fzf >/dev/null || { err "fzf not installed"; return 1; }
+
+  local dir
+  dir=$(fd --type d --hidden --exclude .git . "$HOME" | fzf) || return 0
+  cd "$dir" || return 1
+}
+
+## Find and change directory within current directory
 cdf() {
   command -v fzf >/dev/null || { err "fzf not installed"; return 1; }
 

@@ -7,6 +7,20 @@
 __DOTFILES_BASHRC_LOADED=1
 
 # ==================================================
+# Directory stack enhancements
+# ==================================================
+
+if [[ $- == *i* ]]; then
+  DIRSTACKSIZE=20
+
+  cd() {
+    [[ "$1" == "." ]] && return 0
+    builtin cd "$@" || return
+    pushd . >/dev/null
+  }
+fi
+
+# ==================================================
 # Load modular bash configuration
 # ==================================================
 
