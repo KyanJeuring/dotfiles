@@ -355,24 +355,27 @@ weather() {
     return 1
   fi
 
-  local location
+  local location label
 
   case "$1" in
     "" )
       location="$(curl -fsS https://ipinfo.io/loc 2>/dev/null)" \
         || { warn "Location detection failed"; return 1; }
+      label="current location"
       ;;
     home )
-      location="52.7858,6.8976" 
+      location="52.7858,6.8976"
+      label="Home (Emmen, Drenthe, Netherlands)"
       ;;
     * )
       location="$1"
+      label="$1"
       ;;
   esac
 
   location="${location// /%20}"
 
-  info "Weather for $location"
+  info "Weather for $label"
   log
 
   curl -fsS "wttr.in/${location}?m" \
