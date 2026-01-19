@@ -75,6 +75,25 @@ edit() {
   done
 }
 
+## Find and edit file
+editf() {
+  command -v fzf >/dev/null 2>&1 || {
+    err "fzf not installed"
+    return 1
+  }
+
+  local file
+
+  if command -v fd >/dev/null 2>&1; then
+    file="$(fd --type f --hidden --exclude .git 2>/dev/null | fzf)" || return 0
+  else
+    [[ "$(pwd)" == "$HOME" ]] && warn "Running find in HOME — this may be slow"
+    file="$(find . -type f 2>/dev/null | fzf)" || return 0
+  fi
+
+  [[ -n "$file" ]] && edit "$file"
+}
+
 ## Pager-aware cat
 catp() {
   if [ -t 1 ]; then
