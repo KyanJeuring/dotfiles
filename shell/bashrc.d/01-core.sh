@@ -34,4 +34,5 @@ DEPRECATED_FUNCTIONS=(
   git-host-status
   grescue
   root
+  getjson
 )
