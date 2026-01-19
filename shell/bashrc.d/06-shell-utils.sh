@@ -77,6 +77,15 @@ edit() {
 
 ## Find and edit file
 editf() {
+  local fd_cmd
+  if command -v fd >/dev/null 2>&1; then
+    fd_cmd=fd
+  elif command -v fd-find >/dev/null 2>&1; then
+    fd_cmd=fd-find
+  else
+    fd_cmd=
+  fi
+
   command -v fzf >/dev/null 2>&1 || {
     err "fzf not installed"
     return 1
@@ -84,8 +93,8 @@ editf() {
 
   local file
 
-  if command -v fd >/dev/null 2>&1; then
-    file="$(fd --type f --hidden --exclude .git 2>/dev/null | fzf)" || return 0
+  if [[ -n "$fd_cmd" ]]; then
+    file="$($fd_cmd --type f --hidden --exclude .git 2>/dev/null | fzf)" || return 0
   else
     [[ "$(pwd)" == "$HOME" ]] && warn "Running find in HOME — this may be slow"
     file="$(find . -type f 2>/dev/null | fzf)" || return 0
