@@ -273,6 +273,31 @@ decfile() {
 # Navigation helpers
 # ==================================================
 
+## Find and change directory
+cdf() {
+  command -v fzf >/dev/null || { err "fzf not installed"; return 1; }
+
+  local dir
+
+  if command -v fd >/dev/null; then
+    dir=$(fd --type d --hidden --exclude .git | fzf)
+  else
+    [[ "$(pwd)" == "$HOME" ]] && warn "Running in HOME — this may be slow"
+    dir=$(find . -type d 2>/dev/null | fzf)
+  fi
+
+  [[ -n "$dir" ]] && cd "$dir"
+}
+
+## Jump through directory history
+cdh() {
+  command -v fzf >/dev/null || { err "fzf not installed"; return 1; }
+
+  local dir
+  dir=$(dirs -v | fzf | awk '{print $2}') || return 0
+  cd "$dir" || return 1
+}
+
 ## Go to home directory
 home() { cd "$HOME" || return 1; }
 
