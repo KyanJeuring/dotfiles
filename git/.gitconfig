@@ -19,7 +19,7 @@
 # Core behavior
 # ==================================================
 [core]
-    editor = sh -c 'command -v vim >/dev/null && exec vim "$@" || command -v vi >/dev/null && exec vi "$@" || command -v nano >/dev/null && exec nano "$@" || exec true'
+    editor = vim.exe -f
     pager = less!
     autocrlf = input
     whitespace = trailing-space,space-before-tab

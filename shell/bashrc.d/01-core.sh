@@ -2,8 +2,25 @@
 # Core state
 # ==================================================
 
-export EDITOR="vim"
-export VISUAL="vim"
+if command -v nvim >/dev/null 2>&1; then
+  VISUAL=nvim
+elif command -v vim >/dev/null 2>&1; then
+  VISUAL=vim
+elif command -v vi >/dev/null 2>&1; then
+  VISUAL=vi
+else
+  VISUAL=nano
+fi
+
+export VISUAL
+
+if command -v vim >/dev/null 2>&1; then
+  export EDITOR=vim
+elif command -v vi >/dev/null 2>&1; then
+  export EDITOR=vi
+else
+  export EDITOR=nano
+fi
 
 DEPRECATED_FUNCTIONS=(
   deploy
