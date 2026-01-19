@@ -327,8 +327,23 @@ portscan() {
 }
 
 # ==================================================
-# API testing utilities
+# Curl utilities
 # ==================================================
+
+## Download file with sane defaults
+dload() {
+  if [[ -z "${1:-}" ]]; then
+    err "Usage: dload <url>"
+    return 1
+  fi
+
+  curl -fL \
+    --progress-bar \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    -O "$1"
+}
 
 ## Make an API call with curl
 apicall() {
@@ -346,7 +361,6 @@ apicall() {
   url="$2"
   shift 2
 
-  # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -f|--file)
@@ -372,12 +386,10 @@ apicall() {
     esac
   done
 
-  # Base URL support (opt-in)
   if [[ "$url" == /* && -n "${API_BASE_URL:-}" ]]; then
     url="${API_BASE_URL%/}$url"
   fi
 
-  # Load JSON from file (file always wins)
   if [[ -n "$file" ]]; then
     [[ -f "$file" ]] || {
       err "File not found: $file"
@@ -386,12 +398,10 @@ apicall() {
     data="$(cat "$file")"
   fi
 
-  # Read stdin if nothing else provided
   if [[ -z "$data" && ! -t 0 ]]; then
     data="$(cat)"
   fi
 
-  # Validate method
   case "$method" in
     GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) ;;
     *)
@@ -400,7 +410,6 @@ apicall() {
       ;;
   esac
 
-  # Disallow body on body-less methods
   case "$method" in
     GET|HEAD|OPTIONS)
       if [[ -n "$data" ]]; then
@@ -410,7 +419,6 @@ apicall() {
       ;;
   esac
 
-  # Validate JSON if jq exists and not raw
   if [[ -n "$data" && "$raw" == false ]] && command -v jq >/dev/null 2>&1; then
     jq -e . >/dev/null 2>&1 <<<"$data" || {
       err "Invalid JSON body"
@@ -418,7 +426,6 @@ apicall() {
     }
   fi
 
-  # Base curl options (safe defaults)
   curl_opts+=(
     -sS
     -L
@@ -429,22 +436,18 @@ apicall() {
     -H "User-Agent: apicall/1.0"
   )
 
-  # Auth (opt-in)
   if [[ -n "${APICALL_TOKEN:-}" ]]; then
     curl_opts+=(-H "Authorization: Bearer $APICALL_TOKEN")
   fi
 
-  # Add JSON header only if body exists
   if [[ -n "$data" ]]; then
     curl_opts+=(-H "Content-Type: application/json")
   fi
 
-  # Custom headers
   for h in "${headers[@]}"; do
     curl_opts+=(-H "$h")
   done
 
-  # Dry run (print curl command)
   if [[ "$dry_run" == true ]]; then
     printf 'curl'
     printf ' %q' "${curl_opts[@]}"
@@ -453,7 +456,6 @@ apicall() {
     return 0
   fi
 
-  # Execute
   if [[ "$raw" == false && -n "$data" && $(command -v jq) ]]; then
     curl "${curl_opts[@]}" -d "$data" "$url" | jq
   elif [[ "$raw" == false && $(command -v jq) ]]; then
