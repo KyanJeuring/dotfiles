@@ -19,7 +19,7 @@
 # Core behavior
 # ==================================================
 [core]
-    editor = vim.exe -f
+    editor = vim
     autocrlf = input
     whitespace = trailing-space,space-before-tab
 
