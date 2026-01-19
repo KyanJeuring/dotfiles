@@ -389,6 +389,11 @@ gdiff() {
     return 1
   fi
 
+  if git diff --quiet HEAD -- "$@"; then
+    warn "No differences found"
+    return 0
+  fi
+
   git diff HEAD -- "$@"
 }
 
@@ -401,6 +406,11 @@ gdiffs() {
   if [ $# -lt 1 ]; then
     err "Usage: gdiffs <file>"
     return 1
+  fi
+
+  if git diff --cached --quiet -- "$@"; then
+    warn "No staged differences found"
+    return 0
   fi
 
   git diff --cached -- "$@"
@@ -421,6 +431,11 @@ gdiffc() {
   local ref2="$2"
   shift 2
 
+  if git diff --quiet "$ref1" "$ref2" -- "$@"; then
+    warn "No differences found between $ref1 and $ref2"
+    return 0
+  fi
+
   git diff "$ref1" "$ref2" -- "$@"
 }
 
@@ -438,6 +453,11 @@ gdiffb() {
   local branch1="$1"
   local branch2="$2"
   shift 2
+
+  if git diff --quiet "$branch1" "$branch2" -- "$@"; then
+    warn "No differences found between $branch1 and $branch2"
+    return 0
+  fi
 
   git diff "$branch1" "$branch2" -- "$@"
 }
@@ -470,6 +490,11 @@ gdiffp() {
     err "Failed to fetch origin"
     return 1
   }
+
+  if git diff --quiet "origin/$branch" -- "$@"; then
+    warn "No differences found against origin/$branch"
+    return 0
+  fi
 
   git diff "origin/$branch" -- "$@"
 }
