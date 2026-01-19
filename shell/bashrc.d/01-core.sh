@@ -2,8 +2,8 @@
 # Core state
 # ==================================================
 
-export EDITOR="nvim"
-export VISUAL="nvim"
+export EDITOR="vim"
+export VISUAL="vim"
 
 DEPRECATED_FUNCTIONS=(
   deploy

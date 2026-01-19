@@ -153,7 +153,7 @@ gclone() {
 
 ## Add .gitignore from dotfiles template
 create-gitignore() {
-  root || return 1
+  groot || return 1
 
   if [[ -f .gitignore ]]; then
     warn ".gitignore already exists in repo root"
@@ -173,7 +173,7 @@ create-gitignore() {
 
 ## Add .gitattributes from dotfiles template
 create-gitattributes() {
-  root || return 1
+  groot || return 1
 
   if [[ -f .gitattributes ]]; then
     warn ".gitattributes already exists in repo root"
@@ -393,7 +393,7 @@ whatwillpromote() {
 ghost() {
   local url host repo
 
-  root || return 1
+  groot || return 1
 
   url=$(git remote get-url origin 2>/dev/null) || {
     err "No origin remote found"
