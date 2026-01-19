@@ -330,7 +330,7 @@ portscan() {
 # Curl utilities
 # ==================================================
 
-## Download file with sane defaults
+## Download file from URL with resume support
 dload() {
   if [[ -z "${1:-}" ]]; then
     err "Usage: dload <url>"
@@ -342,10 +342,11 @@ dload() {
     --retry 3 \
     --retry-delay 2 \
     --retry-connrefused \
+    -C - \
     -O "$1"
 }
 
-## Make an API call with curl
+## Make an API call with customizable options
 apicall() {
   local method url data file
   local headers=()
@@ -353,7 +354,7 @@ apicall() {
   local curl_opts=()
 
   if [[ $# -lt 2 ]]; then
-    err "Usage: apicall <METHOD> <url> [options] [json]" >&2
+    err "Usage: apicall <METHOD> <url> [options] [json]"
     return 1
   fi
 
