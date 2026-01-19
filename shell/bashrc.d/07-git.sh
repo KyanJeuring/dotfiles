@@ -47,6 +47,16 @@ _branch_exists() {
 # Git helpers
 # ==================================================
 
+## Go to git repository root
+groot() {
+  local r
+  r=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    err "Not inside a git repository"
+    return 1
+  }
+  cd "$r" || return 1
+}
+
 ## Clone a GitHub repository
 gclone() {
   local repo user host url target

@@ -160,6 +160,7 @@ rmf() {
 
 ## Make executable
 x() {
+  [[ -z "$1" ]] && { err "Usage: x <file> [...]"; return 1; }
   chmod +x "$@"
   ok "Made executable: $*"
 }
@@ -272,29 +273,24 @@ decfile() {
 # Navigation helpers
 # ==================================================
 
+## Go to home directory
 home() { cd "$HOME" || return 1; }
 
+## Go up N directory levels
 up() {
   local levels="${1:-1}"
-  [[ ! "$levels" =~ ^[0-9]+$ ]] && { err "Argument must be a number"; return 1; }
+  [[ ! "$levels" =~ ^[0-9]+$ ]] && { err "Usage: up <levels>"; return 1; }
 
   local path="."
   for ((i=0; i<levels; i++)); do path="$path/.."; done
   cd "$path" || return 1
 }
 
+## Make directory and cd into it
 mkcd() {
-  [[ -z "$1" ]] && { err "No directory specified"; return 1; }
+  [[ -z "$1" ]] && { err "Usage: mkcd <directory>"; return 1; }
   mkdir -p "$1" && cd "$1" || return 1
 }
 
+## Go back to previous directory
 back() { cd - >/dev/null || return 1; }
-
-root() {
-  local r
-  r=$(git rev-parse --show-toplevel 2>/dev/null) || {
-    err "Not inside a git repository"
-    return 1
-  }
-  cd "$r" || return 1
-}

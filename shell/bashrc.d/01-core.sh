@@ -16,4 +16,5 @@ DEPRECATED_FUNCTIONS=(
   is-public-ipv4
   git-host-status
   grescue
+  root
 )
