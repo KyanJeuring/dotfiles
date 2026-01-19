@@ -330,17 +330,140 @@ portscan() {
 # API testing utilities
 # ==================================================
 
-## Fetch JSON from URL (pretty if jq is available)
-getjson() {
-  if [ -z "$1" ]; then
-    echo "Usage: getjson <url>"
+## Make an API call with curl
+apicall() {
+  local method url data file
+  local headers=()
+  local raw=false dry_run=false
+  local curl_opts=()
+
+  if [[ $# -lt 2 ]]; then
+    err "Usage: apicall <METHOD> <url> [options] [json]" >&2
     return 1
   fi
 
-  if command -v jq >/dev/null 2>&1; then
-    curl -fsS "$1" | jq
+  method="${1^^}"
+  url="$2"
+  shift 2
+
+  # Parse options
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--file)
+        file="$2"
+        shift 2
+        ;;
+      -H)
+        headers+=("$2")
+        shift 2
+        ;;
+      --raw)
+        raw=true
+        shift
+        ;;
+      --dry-run)
+        dry_run=true
+        shift
+        ;;
+      *)
+        data="$1"
+        shift
+        ;;
+    esac
+  done
+
+  # Base URL support (opt-in)
+  if [[ "$url" == /* && -n "${API_BASE_URL:-}" ]]; then
+    url="${API_BASE_URL%/}$url"
+  fi
+
+  # Load JSON from file (file always wins)
+  if [[ -n "$file" ]]; then
+    [[ -f "$file" ]] || {
+      err "File not found: $file"
+      return 1
+    }
+    data="$(cat "$file")"
+  fi
+
+  # Read stdin if nothing else provided
+  if [[ -z "$data" && ! -t 0 ]]; then
+    data="$(cat)"
+  fi
+
+  # Validate method
+  case "$method" in
+    GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) ;;
+    *)
+      err "Unsupported HTTP method: $method"
+      return 1
+      ;;
+  esac
+
+  # Disallow body on body-less methods
+  case "$method" in
+    GET|HEAD|OPTIONS)
+      if [[ -n "$data" ]]; then
+        err "$method requests must not include a body"
+        return 1
+      fi
+      ;;
+  esac
+
+  # Validate JSON if jq exists and not raw
+  if [[ -n "$data" && "$raw" == false ]] && command -v jq >/dev/null 2>&1; then
+    jq -e . >/dev/null 2>&1 <<<"$data" || {
+      err "Invalid JSON body"
+      return 1
+    }
+  fi
+
+  # Base curl options (safe defaults)
+  curl_opts+=(
+    -sS
+    -L
+    --fail-with-body
+    --connect-timeout 5
+    --max-time 30
+    -X "$method"
+    -H "User-Agent: apicall/1.0"
+  )
+
+  # Auth (opt-in)
+  if [[ -n "${APICALL_TOKEN:-}" ]]; then
+    curl_opts+=(-H "Authorization: Bearer $APICALL_TOKEN")
+  fi
+
+  # Add JSON header only if body exists
+  if [[ -n "$data" ]]; then
+    curl_opts+=(-H "Content-Type: application/json")
+  fi
+
+  # Custom headers
+  for h in "${headers[@]}"; do
+    curl_opts+=(-H "$h")
+  done
+
+  # Dry run (print curl command)
+  if [[ "$dry_run" == true ]]; then
+    printf 'curl'
+    printf ' %q' "${curl_opts[@]}"
+    [[ -n "$data" ]] && printf ' -d %q' "$data"
+    printf ' %q\n' "$url"
+    return 0
+  fi
+
+  # Execute
+  if [[ "$raw" == false && -n "$data" && $(command -v jq) ]]; then
+    curl "${curl_opts[@]}" -d "$data" "$url" | jq
+  elif [[ "$raw" == false && $(command -v jq) ]]; then
+    curl "${curl_opts[@]}" "$url" | jq
   else
-    curl -fsS "$1"
+    if [[ -n "$data" ]]; then
+      curl "${curl_opts[@]}" -d "$data" "$url"
+    else
+      curl "${curl_opts[@]}" "$url"
+    fi
   fi
 }
 
