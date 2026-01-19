@@ -1080,6 +1080,25 @@ syncdev() {
 # Git release / promotion
 # ==================================================
 
+## Create annotated git tag for release
+gtag() {
+  if ! groot; then
+    return 1
+  fi
+
+  if [ $# -lt 1 ]; then
+    err "Usage: gtag <version> [message]"
+    return 1
+  fi
+
+  local tag="$1"
+  shift
+  local msg="${*:-Release $tag}"
+
+  git tag -a "$tag" -m "$msg" || return 1
+  ok "Created tag $tag"
+}
+
 ## Promote source -> target and create a release tag
 promote() {
   set -uo pipefail
@@ -1137,7 +1156,6 @@ promote() {
   }
 
   trap cleanup RETURN
-  trap cleanup EXIT
   trap 'err "Promote interrupted"; return 1' INT TERM
 
   if [[ "$original" != "$SRC_BRANCH" ]]; then
