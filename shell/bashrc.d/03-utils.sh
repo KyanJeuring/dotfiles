@@ -355,18 +355,22 @@ weather() {
     return 1
   fi
 
-  local location label info
+  local location label info city region country
 
   case "$1" in
     "" )
       info="$(curl -fsS https://ipinfo.io/json 2>/dev/null)" \
         || { warn "Location detection failed"; return 1; }
 
-      label="$(printf '%s\n' "$info" | awk -F'"' '/"city"/{print $4}')"
+      city="$(printf '%s\n' "$info" | awk -F'"' '/"city"/{print $4}')"
+      region="$(printf '%s\n' "$info" | awk -F'"' '/"region"/{print $4}')"
+      country="$(printf '%s\n' "$info" | awk -F'"' '/"country"/{print $4}')"
       location="$(printf '%s\n' "$info" | awk -F'"' '/"loc"/{print $4}')"
+
+      label="$city, $region, $country"
       ;;
     home )
-      label="Emmen, Drenthe, Netherlands"
+      label="Emmen, Drenthe, NL"
       location="52.7858,6.8976"
       ;;
     * )
@@ -375,6 +379,7 @@ weather() {
       ;;
   esac
 
+  # URL-encode spaces for named locations
   location="${location// /%20}"
 
   info "Weather for $label"
