@@ -355,21 +355,23 @@ weather() {
     return 1
   fi
 
-  local location label
+  local location label info
 
   case "$1" in
     "" )
-      location="$(curl -fsS https://ipinfo.io/loc 2>/dev/null)" \
+      info="$(curl -fsS https://ipinfo.io/json 2>/dev/null)" \
         || { warn "Location detection failed"; return 1; }
-      label="current location"
+
+      label="$(printf '%s\n' "$info" | awk -F'"' '/"city"/{print $4}')"
+      location="$(printf '%s\n' "$info" | awk -F'"' '/"loc"/{print $4}')"
       ;;
     home )
+      label="Emmen, Drenthe, Netherlands"
       location="52.7858,6.8976"
-      label="Home (Emmen, Drenthe, Netherlands)"
       ;;
     * )
-      location="$1"
       label="$1"
+      location="$1"
       ;;
   esac
 
@@ -379,6 +381,7 @@ weather() {
   log
 
   curl -fsS "wttr.in/${location}?m" \
+    | sed '/^Location:/d' \
     || warn "Weather unavailable"
 
   log
