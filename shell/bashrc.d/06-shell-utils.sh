@@ -64,9 +64,15 @@ loc() {
 # File access & editing
 # ==================================================
 
-## Open file in editor
+## Open file in preferred editor
 edit() {
-  "${EDITOR:-vi}" "$@"
+  local cmd
+  for cmd in nvim vim vi; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      "$cmd" "$@"
+      return
+    fi
+  done
 }
 
 ## Pager-aware cat
