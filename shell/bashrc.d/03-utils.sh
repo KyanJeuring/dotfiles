@@ -163,11 +163,11 @@ netscan() {
   warn "Active scan (ARP/ICMP)"
   log
 
-printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-28s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-32s${RESET} |\n" \
-  "IP" "Hostname" "Type" "MAC" "Manufacturer"
+  printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
+    "IP" "Hostname" "Type" "MAC" "Manufacturer"
 
-printf "  | %-15s | %-28s | %-10s | %-17s | %-32s |\n" \
-  "---------------" "----------------------------" "----------" "-----------------" "--------------------------------"
+  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+    "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
     sudo nmap -sn "$SUBNET"
@@ -217,15 +217,17 @@ printf "  | %-15s | %-28s | %-10s | %-17s | %-32s |\n" \
 
       type=classify(hostname, vendor)
 
-      host_disp=trunc(hostname, 28)
-      vendor_disp=trunc(vendor, 32)
+      # Build fixed-width cells FIRST
+      host_cell  = sprintf("%-32s", trunc(hostname, 32))
+      vend_cell  = sprintf("%-36s", trunc(vendor, 36))
 
+      # Apply color WITHOUT changing width
       if (hostname == "[UNKNOWN]" && RED != "") {
-        host_disp = RED host_disp RESET
+        sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, host_cell)
       }
 
-      printf "  | %-15s | %-28s | %-10s | %-17s | %-32s |\n",
-        ip, host_disp, type, mac, vendor_disp
+      printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
+        ip, host_cell, type, mac, vend_cell
     }
   ' | sort -V
 
