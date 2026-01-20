@@ -232,24 +232,32 @@ netscan() {
     function classify(host, vendor) {
       h = tolower(host)
       v = tolower(vendor)
-      if (h ~ /(proxmox|pve|lxc|kvm|vm|container|docker)/) return "Server"
-      if (h ~ /(server|srv|node|host)/)                   return "Server"
-      if (h ~ /(website|web|api|backend|frontend)/)       return "Server"
-      if (h ~ /(router|gateway|modem|switch|ap|wifi)/)     return "Network"
-      if (h ~ /\.(kpn|ziggo|vodafone|t-mobile)$/)          return "Network"
+      if (h ~ /(proxmox|pve|lxc|kvm|vm|hypervisor)/) return "Server"
+      if (h ~ /(nas|storage)/)                      return "Server"
+      if (h ~ /(server|host|node)/)                 return "Server"
+      if (h ~ /(website|web|api|backend|frontend)/) return "Server"
       if (h ~ /(printer|print|brother|mfc|laserjet|deskjet)/)
         return "Printer"
-      if (h ~ /(cam|camera|nvr|dvr)/)                      return "Camera"
+      if (h ~ /(cam|camera|nvr|dvr)/)
+        return "Camera"
       if (h ~ /(iphone|ipad|android|pixel|oppo|redmi|xiaomi)/)
         return "Phone"
-      if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link|arcadyan|sagemcom)/)
+      if (h ~ /(router|gateway|modem|switch|ap|wifi)/)
         return "Network"
-      if (v ~ /(dahua|hikvision)/)                         return "Camera"
-      if (v ~ /(amazon|tuya|esp)/)                         return "IoT"
-      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
-        return "Computer"
-      if (v ~ /(samsung|huawei|sony|lg|oneplus|htc)/)
-        return "Phone"
+      if (h ~ /\.(kpn|ziggo|vodafone|t-mobile)$/)
+        return "Network"
+      if (v !~ /^\[(linux|arp|windows)\]$/) {
+        if (v ~ /proxmox/)                          return "Server"
+        if (v ~ /(dahua|hikvision)/)               return "Camera"
+        if (v ~ /(arcadyan|sagemcom)/)             return "Network"
+        if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link)/)
+          return "Network"
+        if (v ~ /(amazon|tuya|esp)/)               return "IoT"
+        if (v ~ /(samsung|huawei|sony|lg|oneplus|htc)/)
+          return "Phone"
+        if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
+          return "Computer"
+      }
 
       return "Unknown"
     }
@@ -265,21 +273,34 @@ netscan() {
       mac=$3; ven=$4; for(i=5;i<=NF;i++) ven=ven" "$i
     }
 
-    /Host is up/{
-      if (mac=="-") {
-        if (ip in win){ mac=win[ip]; ven="[Windows]" }
-        else if (ip in lin){ mac=lin[ip]; ven="[Linux]" }
+    /Host is up/ {
+      if (mac != "-") {
+        # nothing to do
+      }
+      else if (ip in win) {
+        mac = win[ip]
+        ven = "[Windows]"
+      }
+      # Linux fallback ONLY if nmap failed
+      else if (ip in lin) {
+        mac = lin[ip]
+        ven = "[ARP]"
       }
 
-      type=classify(host,ven)
-      if (ip in alias_host) host=alias_host[ip]
-      if (ip in alias_type) type=alias_type[ip]
+      type = classify(host, ven)
 
-      hc=sprintf("%-32s",trunc(host,32))
-      vc=sprintf("%-36s",trunc(ven,36))
-      if (host=="[UNKNOWN]" && RED!="") sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
+      if (ip in alias_host) host = alias_host[ip]
+      if (ip in alias_type) type = alias_type[ip]
 
-      printf "  | %-15s | %s | %-10s | %-17s | %s |\n", ip,hc,type,mac,vc
+      hc = sprintf("%-32s", trunc(host, 32))
+      vc = sprintf("%-36s", trunc(ven, 36))
+
+      if (host == "[UNKNOWN]" && RED != "") {
+        sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, hc)
+      }
+
+      printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
+        ip, hc, type, mac, vc
     }
   ' | sort -V
 
