@@ -395,16 +395,16 @@ _netscan_linux() {
 
 ## Scan local network for connected devices
 netscan() {
-    case "${1:-}" in
+  case "${1:-}" in
     --edit-aliases)
       _netscan_edit_aliases
-      ;;
-    *)
-      _netscan_linux
+      return
       ;;
   esac
 
-  is_gitbash() { [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; }
+  is_gitbash() {
+    [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]
+  }
 
   if is_gitbash; then
     netscan_windows
