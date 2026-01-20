@@ -148,10 +148,13 @@ netscan() {
     return 1
   fi
 
+  # --------------------------------------------------
+  # Colors (TTY-safe)
+  # --------------------------------------------------
   if [[ -t 1 ]]; then
-  HEADER="\033[0;34m\033[1m"
-  RED="\033[0;31m\033[1m"
-  RESET="\033[0m"
+    HEADER="\033[0;34m\033[1m"
+    RED="\033[0;31m\033[1m"
+    RESET="\033[0m"
   else
     HEADER=""
     RED=""
@@ -163,30 +166,44 @@ netscan() {
   warn "Active scan (ARP/ICMP)"
   log
 
+  # --------------------------------------------------
+  # Table header (ONLY labels are blue)
+  # --------------------------------------------------
   printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
+  # --------------------------------------------------
+  # Scan
+  # --------------------------------------------------
   if command -v sudo >/dev/null 2>&1; then
     sudo nmap -sn "$SUBNET"
   else
     nmap -sn "$SUBNET"
   fi |
-
   awk -v RED="$RED" -v RESET="$RESET" '
     function classify(host, vendor) {
-      h=tolower(host)
-      v=tolower(vendor)
+      h = tolower(host)
+      v = tolower(vendor)
 
-      if (h ~ /android|iphone|oppo/) return "Phone"
-      if (h ~ /proxmox|lxc/)         return "Server"
-      if (v ~ /proxmox/)             return "Server"
-      if (v ~ /print|printer|hewlett packard|hp/)  return "Printer"
-      if (v ~ /dahua/)               return "Camera"
-      if (v ~ /amazon/)              return "IoT"
-      if (v ~ /netgear|arcadyan|sagemcom|kreatel/) return "Network"
+      if (h ~ /(proxmox|pve|lxc|kvm)/)        return "Server"
+      if (h ~ /(print|printer|mfc|brother)/) return "Printer"
+      if (h ~ /(android|iphone|pixel|oppo)/) return "Phone"
+      if (h ~ /(cam|camera|nvr)/)            return "Camera"
+      if (h ~ /(nas|storage)/)               return "Server"
+      if (v ~ /proxmox/)                     return "Server"
+      if (v ~ /dahua/)                       return "Camera"
+      if (v ~ /amazon/)                      return "IoT"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
+        return "Network"
+      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/)
+        return "Phone"
+      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
+        return "Computer"
+      if (v ~ /(apple|asus|hewlett packard|hpe)/)
+        return "Unknown"
 
       return "Unknown"
     }
@@ -198,30 +215,30 @@ netscan() {
     }
 
     /^Nmap scan report for/ {
-      hostname="[UNKNOWN]"
-      ip=""
+      hostname = "[UNKNOWN]"
+      ip = ""
 
       if ($0 ~ /\(.*\)/) {
         match($0, /for ([^ ]+) \(([^)]+)\)/, m)
-        hostname=m[1]
-        ip=m[2]
+        hostname = m[1]
+        ip = m[2]
       } else {
-        ip=$NF
+        ip = $NF
       }
     }
 
     /MAC Address:/ {
-      mac=$3
-      vendor=$4
-      for (i=5; i<=NF; i++) vendor=vendor" "$i
+      mac = $3
+      vendor = $4
+      for (i=5; i<=NF; i++) vendor = vendor " " $i
 
-      type=classify(hostname, vendor)
+      type = classify(hostname, vendor)
 
       # Build fixed-width cells FIRST
-      host_cell  = sprintf("%-32s", trunc(hostname, 32))
-      vend_cell  = sprintf("%-36s", trunc(vendor, 36))
+      host_cell = sprintf("%-32s", trunc(hostname, 32))
+      vend_cell = sprintf("%-36s", trunc(vendor, 36))
 
-      # Apply color WITHOUT changing width
+      # Color UNKNOWN without changing width
       if (hostname == "[UNKNOWN]" && RED != "") {
         sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, host_cell)
       }
