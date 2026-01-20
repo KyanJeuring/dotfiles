@@ -190,7 +190,7 @@ netscan_windows() {
 
 ### netscan for Linux systems
 _netscan_linux() {
-    info "Scanning local network for devices"
+  info "Scanning local network for devices"
   log
 
   if ! command -v nmap >/dev/null 2>&1; then
@@ -202,22 +202,14 @@ _netscan_linux() {
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
 
-  if [[ -z "$SUBNET" ]]; then
-    err "Could not determine local subnet"
-    return 1
-  fi
+  [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
 
-  # --------------------------------------------------
-  # Colors (TTY-safe)
-  # --------------------------------------------------
   if [[ -t 1 ]]; then
     HEADER="\033[0;34m\033[1m"
     RED="\033[0;31m\033[1m"
     RESET="\033[0m"
   else
-    HEADER=""
-    RED=""
-    RESET=""
+    HEADER=""; RED=""; RESET=""
   fi
 
   info "Interface : $IFACE"
@@ -225,24 +217,40 @@ _netscan_linux() {
   warn "Active scan (ARP/ICMP)"
   log
 
-  # --------------------------------------------------
-  # Table header (ONLY labels are blue)
-  # --------------------------------------------------
   printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
-  # --------------------------------------------------
-  # Scan + parse
-  # --------------------------------------------------
-  if command -v sudo >/dev/null 2>&1; then
-    sudo nmap -sn "$SUBNET"
+  ip neigh flush all >/dev/null 2>&1 || true
+  ping -c 1 -b 255.255.255.255 >/dev/null 2>&1 || true
+
+  mkdir -p "$HOME/.config/netaliases"
+
+  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
+  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
+
+  NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
+  NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
+
+  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
+  DEFAULT_ALIAS_FILE="$HOME/.config/netaliases/default"
+
+  if [[ -f "$ALIAS_FILE" ]]; then
+    :
+  elif [[ -f "$DEFAULT_ALIAS_FILE" ]]; then
+    ALIAS_FILE="$DEFAULT_ALIAS_FILE"
   else
-    nmap -sn "$SUBNET"
+    ALIAS_FILE=""
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    sudo nmap -sn -PR "$SUBNET"
+  else
+    nmap -sn -PR "$SUBNET"
   fi |
-  awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$HOME/.config/netaliases" '
+  awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$ALIAS_FILE" '
+
     BEGIN {
       if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
         do {
@@ -258,30 +266,24 @@ _netscan_linux() {
       h = tolower(host)
       v = tolower(vendor)
 
-      # Hostname-based (strongest signal)
       if (h ~ /(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
       if (h ~ /(print|printer|mfc|brother)/)      return "Printer"
       if (h ~ /(android|iphone|pixel|oppo)/)      return "Phone"
       if (h ~ /(cam|camera|nvr)/)                 return "Camera"
 
-      # Vendor-based (specific only)
       if (v ~ /proxmox/)                          return "Server"
       if (v ~ /dahua/)                            return "Camera"
       if (v ~ /amazon/)                           return "IoT"
 
-      # Network infrastructure
       if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
         return "Network"
 
-      # Phones
       if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/)
         return "Phone"
 
-      # Computers (non-ambiguous only)
       if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
         return "Computer"
 
-      # Ambiguous vendors → stay honest
       return "Unknown"
     }
 
@@ -291,41 +293,34 @@ _netscan_linux() {
     }
 
     /^Nmap scan report for/ {
-      hostname = "[UNKNOWN]"
-      ip = ""
-
-      if ($0 ~ /\(.*\)/) {
-        match($0, /for ([^ ]+) \(([^)]+)\)/, m)
-        hostname = m[1]
-        ip = m[2]
-      } else {
-        ip = $NF
-      }
+      hostname="[UNKNOWN]"
+      ip=""
+      if ($0 ~ /\(/) {
+        match($0,/for ([^ ]+) \(([^)]+)\)/,m)
+        hostname=m[1]; ip=m[2]
+      } else ip=$NF
     }
 
     /MAC Address:/ {
-      mac = $3
-      vendor = $4
-      for (i=5; i<=NF; i++) vendor = vendor " " $i
+      mac=$3
+      vendor=$4
+      for(i=5;i<=NF;i++) vendor=vendor" "$i
 
-      type = classify(hostname, vendor)
+      type=classify(hostname,vendor)
 
-      # Alias override (authoritative)
       if (ip in alias_host && alias_host[ip] != "-")
         hostname = alias_host[ip]
       if (ip in alias_type && alias_type[ip] != "")
         type = alias_type[ip]
 
-      host_cell = sprintf("%-32s", trunc(hostname, 32))
-      vend_cell = sprintf("%-36s", trunc(vendor, 36))
+      hc=sprintf("%-32s",trunc(hostname,32))
+      vc=sprintf("%-36s",trunc(vendor,36))
 
-      # Color UNKNOWN hostname without breaking width
-      if (hostname == "[UNKNOWN]" && RED != "") {
-        sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, host_cell)
-      }
+      if (hostname=="[UNKNOWN]" && RED!="")
+        sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
 
       printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
-        ip, host_cell, type, mac, vend_cell
+        ip,hc,type,mac,vc
     }
   ' | sort -V
 
