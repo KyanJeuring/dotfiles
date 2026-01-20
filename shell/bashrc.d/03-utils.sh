@@ -324,23 +324,30 @@ _netscan_linux() {
       h = tolower(host)
       v = tolower(vendor)
 
-      if (h ~ /(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
-      if (h ~ /(print|printer|mfc|brother)/)      return "Printer"
-      if (h ~ /(android|iphone|pixel|oppo)/)      return "Phone"
-      if (h ~ /(cam|camera|nvr)/)                 return "Camera"
+      # Hostname-based (primary)
+      if (h ~ /(proxmox|pve|lxc|kvm)/) return "Server"
+      if (h ~ /(nas|storage)/) return "Storage"
+      if (h ~ /(print|printer|mfc|brother|epson|canon)/) return "Printer"
+      if (h ~ /(cam|camera|nvr)/) return "Camera"
+      if (h ~ /(switch|router|firewall|ap)/) return "Network"
+      if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
+      if (h ~ /(laptop|desktop|pc|workstation|notebook|macbook)/) return "Computer"
+      if (h ~ /(iphone|ipad|pixel)/) return "Phone"
+      if (h ~ /(galaxy|s[0-9]{2}[^a-z0-9]|note[0-9]?)/) return "Phone"
+      if (h ~ /(redmi|xiaomi|mi[0-9])/ ) return "Phone"
+      if (h ~ /(oneplus|oppo|realme)/) return "Phone"
+      if (h ~ /(huawei|honor)/) return "Phone"
+      if (h ~ /(sony|xperia)/) return "Phone"
+      if (h ~ /(lg|htc)/) return "Phone"
 
-      if (v ~ /proxmox/)                          return "Server"
-      if (v ~ /dahua/)                            return "Camera"
-      if (v ~ /amazon/)                           return "IoT"
-
-      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
-        return "Network"
-
-      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/)
-        return "Phone"
-
-      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
-        return "Computer"
+      # Vendor-based (secondary)
+      if (v ~ /proxmox/) return "Server"
+      if (v ~ /dahua/) return "Camera"
+      if (v ~ /(netapp|qnap|synology|asustor|western digital)/) return "Storage"
+      if (v ~ /amazon/ && h ~ /(echo|alexa|kindle|fire)/) return "IoT"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/) return "Network"
+      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
+      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
 
       return "Unknown"
     }
