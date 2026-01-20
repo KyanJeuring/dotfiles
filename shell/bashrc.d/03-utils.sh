@@ -159,9 +159,8 @@ _netscan_edit_aliases() {
 #   <ip> <hostname> [type]
 #
 # Examples:
-#   192.168.2.250 dfkj-proxmox-host Server
-#   192.168.2.76  brother-printer  Printer
-#   192.168.2.201 -                Server
+#   192.168.x.x My-Desktop Computer
+#   192.168.x.x - Type-Override
 #
 # Use '-' to keep detected hostname but override type.
 # Lines starting with '#' are ignored.
@@ -389,7 +388,15 @@ _netscan_linux() {
     }
   ' | sort -V
 
+  SELF_IP="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2}' | cut -d/ -f1)"
+  SELF_HOST="$(hostname -f 2>/dev/null || hostname)"
+  SELF_TYPE="$(hostname | awk '{print tolower($0)}' | grep -Eq '(proxmox|pve|server)' && echo Server || echo Computer)"
+  SELF_MAC="$(cat /sys/class/net/$IFACE/address 2>/dev/null)"
+
+  printf "  | %-15s | %-32s | %-10s | %-17s | %s |\n" \
+  "$SELF_IP" "$SELF_HOST (this device)" "$SELF_TYPE" "$SELF_MAC" "[local]"
   log
+
   ok "Scan completed"
 }
 
