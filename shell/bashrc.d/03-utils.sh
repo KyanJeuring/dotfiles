@@ -139,13 +139,52 @@ netscan() {
     return 1
   fi
 
-  local IFACE SUBNET
-  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
-  SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
+  is_gitbash() {
+    [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]
+  }
 
-  if [[ -z "$SUBNET" ]]; then
-    err "Could not determine local subnet"
-    return 1
+  is_wsl() {
+    grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null
+  }
+
+  local IFACE SUBNET
+
+  if is_gitbash; then
+    info "Environment : Windows (Git Bash)"
+    warn "Using Windows host network"
+    log
+
+    local IP CIDR
+    IP="$(powershell.exe -NoProfile -Command \
+      "Get-NetIPAddress -AddressFamily IPv4 |
+       Where-Object {\$_.IPAddress -notlike '169.254*'} |
+       Select-Object -First 1 -ExpandProperty IPAddress" | tr -d '\r')"
+
+    CIDR="$(powershell.exe -NoProfile -Command \
+      "Get-NetIPAddress -AddressFamily IPv4 |
+       Where-Object {\$_.IPAddress -notlike '169.254*'} |
+       Select-Object -First 1 -ExpandProperty PrefixLength" | tr -d '\r')"
+
+    if [[ -z "$IP" || -z "$CIDR" ]]; then
+      err "Could not determine Windows subnet"
+      return 1
+    fi
+
+    IFACE="Windows Host"
+    SUBNET="$IP/$CIDR"
+
+  else
+    IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+    SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
+
+    if [[ -z "$SUBNET" ]]; then
+      err "Could not determine local subnet"
+      return 1
+    fi
+  fi
+
+  if is_wsl; then
+    warn "WSL detected: network visibility is limited (NAT)"
   fi
 
   if [[ -t 1 ]]; then
@@ -169,7 +208,7 @@ netscan() {
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
-  if command -v sudo >/dev/null 2>&1; then
+  if command -v sudo >/dev/null 2>&1 && ! is_gitbash; then
     sudo nmap -sn "$SUBNET"
   else
     nmap -sn "$SUBNET"
@@ -230,7 +269,6 @@ netscan() {
 
       type = classify(hostname, vendor)
 
-      # Alias override (authoritative)
       if (ip in alias_host && alias_host[ip] != "-")
         hostname = alias_host[ip]
       if (ip in alias_type && alias_type[ip] != "")
@@ -239,7 +277,6 @@ netscan() {
       host_cell = sprintf("%-32s", trunc(hostname, 32))
       vend_cell = sprintf("%-36s", trunc(vendor, 36))
 
-      # Color UNKNOWN hostname without breaking width
       if (hostname == "[UNKNOWN]" && RED != "") {
         sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, host_cell)
       }
