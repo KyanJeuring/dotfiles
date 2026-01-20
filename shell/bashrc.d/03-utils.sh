@@ -163,9 +163,11 @@ netscan() {
   warn "Active scan (ARP/ICMP)"
   log
 
-  printf "  ${HEADER}%-15s  %-15s  %-17s  %s${RESET}\n" "IP" "Hostname" "MAC" "Manufacturer"
-  printf "  %-15s  %-15s  %-17s  %s\n" \
-    "---------------" "---------------" "-----------------" "----------------------------"
+  printf "  ${HEADER}| %-15s | %-28s | %-10s | %-17s | %s |${RESET}\n" \
+    "IP" "Hostname" "Type" "MAC" "Manufacturer"
+
+  printf "  ${HEADER}| %-15s | %-28s | %-10s | %-17s | %s |${RESET}\n" \
+    "---------------" "----------------------------" "----------" "-----------------" "----------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
     sudo nmap -sn "$SUBNET"
@@ -173,20 +175,26 @@ netscan() {
     nmap -sn "$SUBNET"
   fi |
 
-  awk -v RED="${RED}" -v RESET="${RESET}" '
+  awk -v RED="$RED" -v RESET="$RESET" '
     function classify(host, vendor) {
       h=tolower(host)
       v=tolower(vendor)
 
-      if (h ~ /android|iphone|oppo/)        return "Phone"
-      if (h ~ /proxmox|lxc/)               return "Server"
-      if (v ~ /proxmox/)                   return "Server"
-      if (v ~ /hewlett packard|hp/)        return "Printer"
-      if (v ~ /dahua/)                     return "Camera"
-      if (v ~ /amazon/)                    return "IoT"
+      if (h ~ /android|iphone|oppo/) return "Phone"
+      if (h ~ /proxmox|lxc/)         return "Server"
+      if (v ~ /proxmox/)             return "Server"
+      if (v ~ /hewlett packard|hp/)  return "Printer"
+      if (v ~ /dahua/)               return "Camera"
+      if (v ~ /amazon/)              return "IoT"
       if (v ~ /netgear|arcadyan|sagemcom|kreatel/) return "Network"
 
       return "Unknown"
+    }
+
+    function trunc(s, w) {
+      if (length(s) > w)
+        return substr(s, 1, w-1) "…"
+      return s
     }
 
     /^Nmap scan report for/ {
@@ -209,15 +217,15 @@ netscan() {
 
       type=classify(hostname, vendor)
 
-      # Pad hostname BEFORE coloring
-      padded_host = sprintf("%-24s", hostname)
+      host_raw=hostname
+      host_disp=trunc(hostname, 28)
 
-      if (hostname == "[UNKNOWN]" && RED != "") {
-        padded_host = RED padded_host RESET
+      if (host_raw == "[UNKNOWN]" && RED != "") {
+        host_disp = RED host_disp RESET
       }
 
-      printf "  %-15s  %s  %-10s  %-17s  %s\n",
-        ip, padded_host, type, mac, vendor
+      printf "  | %-15s | %-28s | %-10s | %-17s | %s |\n",
+        ip, host_disp, type, mac, vendor
     }
   ' | sort -V
 
