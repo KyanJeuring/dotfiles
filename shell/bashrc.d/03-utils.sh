@@ -156,21 +156,35 @@ netscan() {
 
     local IP CIDR
     IP="$(powershell.exe -NoProfile -Command \
-      "Get-NetIPAddress -AddressFamily IPv4 |
-       Where-Object {\$_.IPAddress -notlike '169.254*'} |
-       Select-Object -First 1 -ExpandProperty IPAddress" | tr -d '\r')"
+      "\$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
+            Sort-Object -Property RouteMetric, InterfaceMetric |
+            Select-Object -First 1;
+        if (-not \$r) { exit 1 }
+        \$i = Get-NetIPInterface -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
+              Sort-Object -Property InterfaceMetric |
+              Select-Object -First 1;
+        \$a = Get-NetIPAddress -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
+              Where-Object { \$_.IPAddress -notlike '169.254*' -and \$_.PrefixOrigin -ne 'WellKnown' -and \$_.IPAddress -ne '127.0.0.1' } |
+              Sort-Object -Property SkipAsSource, AddressState |
+              Select-Object -First 1;
+        if (\$a) { \$a.IPAddress }" | tr -d '\r')"
 
     CIDR="$(powershell.exe -NoProfile -Command \
-      "Get-NetIPAddress -AddressFamily IPv4 |
-       Where-Object {\$_.IPAddress -notlike '169.254*'} |
-       Select-Object -First 1 -ExpandProperty PrefixLength" | tr -d '\r')"
+      "\$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
+            Sort-Object -Property RouteMetric, InterfaceMetric |
+            Select-Object -First 1;
+        if (-not \$r) { exit 1 }
+        \$a = Get-NetIPAddress -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
+              Where-Object { \$_.IPAddress -notlike '169.254*' -and \$_.PrefixOrigin -ne 'WellKnown' -and \$_.IPAddress -ne '127.0.0.1' } |
+              Select-Object -First 1;
+        if (\$a) { \$a.PrefixLength }" | tr -d '\r')"
 
     if [[ -z "$IP" || -z "$CIDR" ]]; then
-      err "Could not determine Windows subnet"
+      err "Could not determine Windows subnet (default route interface)"
       return 1
     fi
 
-    IFACE="Windows Host"
+    IFACE="Windows Default Route"
     SUBNET="$IP/$CIDR"
 
   else
