@@ -183,7 +183,7 @@ netscan() {
       if (h ~ /android|iphone|oppo/) return "Phone"
       if (h ~ /proxmox|lxc/)         return "Server"
       if (v ~ /proxmox/)             return "Server"
-      if (v ~ /hewlett packard|hp/)  return "Printer"
+      if (v ~ /print|printer|hewlett packard|hp/)  return "Printer"
       if (v ~ /dahua/)               return "Camera"
       if (v ~ /amazon/)              return "IoT"
       if (v ~ /netgear|arcadyan|sagemcom|kreatel/) return "Network"
