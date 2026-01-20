@@ -165,15 +165,19 @@ netscan() {
   awk '
     /^Nmap scan report for/ {
       hostname="-"
-      ip=$NF
+      ip=""
 
-      # Case: hostname present
-      if ($5 ~ /\(/) {
-        hostname=$5
-        sub(/\(.*/, "", hostname)
-        sub(/\)/, "", ip)
+      # Case: hostname + IP in parentheses
+      if ($0 ~ /\(.*\)/) {
+        match($0, /for ([^ ]+) \(([^)]+)\)/, m)
+        hostname=m[1]
+        ip=m[2]
+      } else {
+        # Case: IP only
+        ip=$NF
       }
     }
+
     /MAC Address:/ {
       mac=$3
       vendor=$4
