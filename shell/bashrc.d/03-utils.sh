@@ -104,7 +104,7 @@ netcheck() {
 }
 
 ## Show known devices on the local network (ARP/neighbor cache)
-netdevices() {
+netneighbors() {
   info "Known network devices (neighbor cache)"
   log
 
@@ -139,9 +139,7 @@ netscan() {
     return 1
   fi
 
-  # Determine default interface and subnet
   local IFACE SUBNET
-
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
 
@@ -152,22 +150,45 @@ netscan() {
 
   info "Interface : $IFACE"
   info "Subnet    : $SUBNET"
-  warn "This sends ARP/ICMP probes to the local network"
+  warn "Active scan (ARP/ICMP)"
   log
+
+  printf "  %-15s  %-15s  %-17s  %s\n" "IP" "Hostname" "MAC" "Manufacturer"
+  printf "  %-15s  %-15s  %-17s  %s\n" \
+    "---------------" "---------------" "-----------------" "----------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
     sudo nmap -sn "$SUBNET"
   else
     nmap -sn "$SUBNET"
-  fi
+  fi |
+  awk '
+    /^Nmap scan report for/ {
+      hostname="-"
+      ip=$NF
 
-  ok "Network scan completed"
+      # Case: hostname present
+      if ($5 ~ /\(/) {
+        hostname=$5
+        sub(/\(.*/, "", hostname)
+        sub(/\)/, "", ip)
+      }
+    }
+    /MAC Address:/ {
+      mac=$3
+      vendor=$4
+      for (i=5; i<=NF; i++) vendor=vendor" "$i
+      printf "  %-15s  %-15s  %-17s  %s\n", ip, hostname, mac, vendor
+    }
+  ' | sort -V
+
   log
+  ok "Scan completed"
 }
 
 ## Show known network devices and optionally run active scan
 netwatch() {
-  netdevices
+  netneighbors
   read -rp "Run active network scan? [y/N]: " ans
   [[ "$ans" =~ ^[Yy]$ ]] && netscan
 }

@@ -35,4 +35,5 @@ DEPRECATED_FUNCTIONS=(
   grescue
   root
   getjson
+  netdevices
 )
