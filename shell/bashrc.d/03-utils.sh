@@ -389,17 +389,26 @@ _netscan_linux() {
   ' | sort -V
 
   SELF_IP="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2}' | cut -d/ -f1)"
+
   SELF_HOST="$(
     hostnamectl --static 2>/dev/null ||
     cat /proc/sys/kernel/hostname 2>/dev/null ||
     uname -n 2>/dev/null ||
     echo "localhost"
   )"
-  SELF_TYPE="$(hostname | awk '{print tolower($0)}' | grep -Eq '(proxmox|pve|server)' && echo Server || echo Computer)"
+
+  SELF_TYPE="$(
+    printf '%s\n' "$SELF_HOST" |
+    awk '{print tolower($0)}' |
+    grep -Eq '(proxmox|pve|server)' && echo Server || echo Computer
+  )"
+
   SELF_MAC="$(cat /sys/class/net/$IFACE/address 2>/dev/null)"
 
-  printf "  | %-15s | %-32s | %-10s | %-17s | %s |\n" \
-  "$SELF_IP" "$SELF_HOST (this device)" "$SELF_TYPE" "$SELF_MAC" "[local]"
+  SELF_HOST_CELL="$(printf '%-32s' "$(printf '%.32s' "$SELF_HOST (this device)")")"
+
+  printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n" \
+    "$SELF_IP" "$SELF_HOST_CELL" "$SELF_TYPE" "$SELF_MAC" "[local]"
   log
 
   ok "Scan completed"
