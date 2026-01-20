@@ -103,6 +103,75 @@ netcheck() {
   curl -fsS https://1.1.1.1 >/dev/null && echo "Online" || echo "Offline"
 }
 
+## Show known devices on the local network (ARP/neighbor cache)
+netdevices() {
+  info "Known network devices (neighbor cache)"
+  log
+
+  if command -v ip >/dev/null 2>&1; then
+    ip neigh show \
+      | awk '
+        $1 ~ /^[0-9]/ {
+          printf "  %-16s  %-17s  %s\n", $1, $5, $NF
+        }'
+  elif command -v arp >/dev/null 2>&1; then
+    arp -n \
+      | awk '
+        $1 ~ /^[0-9]/ {
+          printf "  %-16s  %-17s  %s\n", $1, $3, $NF
+        }'
+  else
+    err "Neither ip nor arp command available"
+    return 1
+  fi
+
+  log
+  warn "Only shows devices this machine has recently seen"
+}
+
+## Scan local network for connected devices
+netscan() {
+  info "Scanning local network for devices"
+  log
+
+  if ! command -v nmap >/dev/null 2>&1; then
+    err "nmap is not installed"
+    return 1
+  fi
+
+  # Determine default interface and subnet
+  local IFACE SUBNET
+
+  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+  SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
+
+  if [[ -z "$SUBNET" ]]; then
+    err "Could not determine local subnet"
+    return 1
+  fi
+
+  info "Interface : $IFACE"
+  info "Subnet    : $SUBNET"
+  warn "This sends ARP/ICMP probes to the local network"
+  log
+
+  if command -v sudo >/dev/null 2>&1; then
+    sudo nmap -sn "$SUBNET"
+  else
+    nmap -sn "$SUBNET"
+  fi
+
+  ok "Network scan completed"
+  log
+}
+
+## Show known network devices and optionally run active scan
+netwatch() {
+  netdevices
+  read -rp "Run active network scan? [y/N]: " ans
+  [[ "$ans" =~ ^[Yy]$ ]] && netscan
+}
+
 ## Show current UTC time from internet
 utctime() {
   curl -fsS https://timeapi.io/api/Time/current/zone?timeZone=UTC 2>/dev/null |
