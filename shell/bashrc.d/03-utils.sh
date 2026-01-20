@@ -132,35 +132,64 @@ netneighbors() {
 ### Edit netscan alias file for current subnet
 _netscan_edit_aliases() {
   local IFACE NET_ID GW_IP GW_MAC NET_ID_FILE ALIAS_FILE EDITOR_CMD
-
-  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
-  [[ -z "$IFACE" ]] && { err "Could not determine active interface"; return 1; }
-
-  NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
-  [[ -z "$NET_ID" ]] && { err "Could not determine subnet"; return 1; }
-
-  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
-  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
-
-  NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
-  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
+  local OS NET_DESC
 
   mkdir -p "$HOME/.config/netaliases"
 
-  # Create file with template if missing
+  case "$OSTYPE" in
+    msys*|cygwin*)
+      OS="windows"
+      ;;
+    *)
+      OS="linux"
+      ;;
+  esac
+
+  if [[ "$OS" == "linux" ]]; then
+    IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+    [[ -z "$IFACE" ]] && { err "Could not determine active interface"; return 1; }
+
+    NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
+    [[ -z "$NET_ID" ]] && { err "Could not determine subnet"; return 1; }
+
+    GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
+    GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
+
+    NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
+    NET_DESC="Interface: $IFACE | Subnet: $NET_ID | Gateway: $GW_IP ($GW_MAC)"
+
+  else
+    NET_ID="$(powershell.exe -NoProfile -Command '
+      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+           Sort-Object RouteMetric,InterfaceMetric |
+           Select-Object -First 1
+      (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+       Where-Object { $_.IPAddress -notlike "169.254*" })[0].IPAddress +
+      "/" +
+      (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+       Where-Object { $_.IPAddress -notlike "169.254*" })[0].PrefixLength
+    ' | tr -d "\r")"
+
+    [[ -z "$NET_ID" ]] && { err "Could not determine subnet (Windows)"; return 1; }
+
+    NET_ID_FILE="${NET_ID//\//_}"
+    NET_DESC="Subnet: $NET_ID (Windows)"
+
+  fi
+
+  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
+
   if [[ ! -f "$ALIAS_FILE" ]]; then
     cat >"$ALIAS_FILE" <<EOF
-# netscan aliases for:
-#   Interface : $IFACE
-#   Subnet    : $NET_ID
-#   Gateway   : $GW_IP ($GW_MAC)
+# netscan aliases
+# $NET_DESC
 #
 # Format:
 #   <ip> <hostname> [type]
 #
 # Examples:
-#   192.168.x.x My-Desktop Computer
-#   192.168.x.x - Type-Override
+#   192.168.x.x my-desktop Computer
+#   192.168.x.x - Server
 #
 # Use '-' to keep detected hostname but override type.
 # Lines starting with '#' are ignored.
@@ -173,7 +202,6 @@ EOF
     info "  $ALIAS_FILE"
   fi
 
-  # Pick editor
   EDITOR_CMD="${EDITOR:-}"
   [[ -z "$EDITOR_CMD" ]] && command -v nano >/dev/null && EDITOR_CMD="nano"
   [[ -z "$EDITOR_CMD" ]] && command -v vi   >/dev/null && EDITOR_CMD="vi"
