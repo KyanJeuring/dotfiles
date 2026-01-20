@@ -134,18 +134,10 @@ netscan() {
   info "Scanning local network for devices"
   log
 
-  if ! command -v nmap >/dev/null 2>&1; then
-    err "nmap is not installed"
-    return 1
-  fi
+  command -v nmap >/dev/null 2>&1 || { err "nmap is not installed"; return 1; }
 
-  is_gitbash() {
-    [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]
-  }
-
-  is_wsl() {
-    grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null
-  }
+  is_gitbash() { [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; }
+  is_wsl() { grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; }
 
   local IFACE SUBNET
 
@@ -155,60 +147,43 @@ netscan() {
     log
 
     local IP CIDR
-
     IP="$(powershell.exe -NoProfile -Command '
       $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-           Sort-Object RouteMetric,InterfaceMetric |
-           Select-Object -First 1
-      if (-not $r) { exit 1 }
+           Sort RouteMetric,InterfaceMetric |
+           Select -First 1
       $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-           Where-Object { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
-           Select-Object -First 1
-      if ($a) { $a.IPAddress }
+           Where { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
+           Select -First 1
+      $a.IPAddress
     ' | tr -d '\r')"
 
     CIDR="$(powershell.exe -NoProfile -Command '
       $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-           Sort-Object RouteMetric,InterfaceMetric |
-           Select-Object -First 1
-      if (-not $r) { exit 1 }
+           Sort RouteMetric,InterfaceMetric |
+           Select -First 1
       $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-           Where-Object { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
-           Select-Object -First 1
-      if ($a) { $a.PrefixLength }
+           Where { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
+           Select -First 1
+      $a.PrefixLength
     ' | tr -d '\r')"
 
-    if [[ -z "$IP" || -z "$CIDR" ]]; then
-      err "Could not determine Windows subnet"
-      return 1
-    fi
+    [[ -z "$IP" || -z "$CIDR" ]] && { err "Could not determine Windows subnet"; return 1; }
 
     IFACE="Windows Default Route"
     SUBNET="$IP/$CIDR"
-
   else
     IFACE="$(ip route | awk '/default/ {print $5; exit}')"
     SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
-
-    if [[ -z "$SUBNET" ]]; then
-      err "Could not determine local subnet"
-      return 1
-    fi
+    [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
   fi
 
-  if is_wsl; then
-    warn "WSL detected: network visibility is limited (NAT)"
-  fi
+  is_wsl && warn "WSL detected: network visibility is limited (NAT)"
 
   local HEADER RED RESET
   if [[ -t 1 ]]; then
-    HEADER="\033[0;34m\033[1m"
-    RED="\033[0;31m\033[1m"
-    RESET="\033[0m"
+    HEADER="\033[1;34m"; RED="\033[1;31m"; RESET="\033[0m"
   else
-    HEADER=""
-    RED=""
-    RESET=""
+    HEADER=""; RED=""; RESET=""
   fi
 
   info "Interface : $IFACE"
@@ -221,109 +196,90 @@ netscan() {
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
-  local WIN_ARP=""
+
+  local WIN_ARP="" LINUX_ARP=""
+
   if is_gitbash; then
     WIN_ARP="$(powershell.exe -NoProfile -Command '
       Get-NetNeighbor -AddressFamily IPv4 |
-      Where-Object { $_.State -eq "Reachable" } |
+      Where { $_.State -eq "Reachable" } |
       ForEach-Object { "$($_.IPAddress) $($_.LinkLayerAddress)" }
     ' | tr -d '\r')"
+  else
+    LINUX_ARP="$(ip neigh | awk '$1 ~ /^[0-9]+\./ && $5 ~ /:/ { print $1, toupper($5) }')"
   fi
 
-  if command -v sudo >/dev/null 2>&1 && ! is_gitbash; then
-    sudo nmap -sn "$SUBNET"
-  else
-    nmap -sn "$SUBNET"
-  fi |
+  { command -v sudo >/dev/null 2>&1 && ! is_gitbash && sudo nmap -sn "$SUBNET" || nmap -sn "$SUBNET"; } |
   awk -v RED="$RED" -v RESET="$RESET" \
       -v ALIAS_FILE="$HOME/.config/netaliases" \
-      -v WIN_ARP="$WIN_ARP" '
+      -v WIN_ARP="$WIN_ARP" \
+      -v LINUX_ARP="$LINUX_ARP" '
     BEGIN {
-      if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
+      if ((getline < ALIAS_FILE) > 0) {
         do {
-          if ($0 ~ /^#/ || NF < 2) continue
-          alias_host[$1] = $2
-          alias_type[$1] = (NF >= 3 ? $3 : "")
+          if ($0 !~ /^#/ && NF >= 2) {
+            alias_host[$1] = $2
+            if (NF >= 3) alias_type[$1] = $3
+          }
         } while (getline < ALIAS_FILE)
         close(ALIAS_FILE)
       }
 
-      if (WIN_ARP != "") {
-        n = split(WIN_ARP, lines, "\n")
-        for (i = 1; i <= n; i++) {
-          split(lines[i], f, " ")
-          win_mac[f[1]] = f[2]
-        }
-      }
+      n = split(WIN_ARP, w, "\n"); for (i=1;i<=n;i++){ split(w[i],f," "); win[f[1]]=f[2] }
+      n = split(LINUX_ARP, l, "\n"); for (i=1;i<=n;i++){ split(l[i],f," "); lin[f[1]]=f[2] }
     }
 
     function classify(host, vendor) {
       h = tolower(host)
       v = tolower(vendor)
-      if (h ~ /(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
-      if (h ~ /(print|printer|mfc|brother)/)      return "Printer"
-      if (h ~ /(android|iphone|pixel|oppo)/)      return "Phone"
-      if (h ~ /(cam|camera|nvr)/)                 return "Camera"
-      if (v ~ /proxmox/)                          return "Server"
-      if (v ~ /dahua/)                            return "Camera"
-      if (v ~ /amazon/)                           return "IoT"
-      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
+      if (h ~ /(proxmox|pve|lxc|kvm|vm|container|docker)/) return "Server"
+      if (h ~ /(server|srv|node|host)/)                   return "Server"
+      if (h ~ /(website|web|api|backend|frontend)/)       return "Server"
+      if (h ~ /(router|gateway|modem|switch|ap|wifi)/)     return "Network"
+      if (h ~ /\.(kpn|ziggo|vodafone|t-mobile)$/)          return "Network"
+      if (h ~ /(printer|print|brother|mfc|laserjet|deskjet)/)
+        return "Printer"
+      if (h ~ /(cam|camera|nvr|dvr)/)                      return "Camera"
+      if (h ~ /(iphone|ipad|android|pixel|oppo|redmi|xiaomi)/)
+        return "Phone"
+      if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link|arcadyan|sagemcom)/)
         return "Network"
+      if (v ~ /(dahua|hikvision)/)                         return "Camera"
+      if (v ~ /(amazon|tuya|esp)/)                         return "IoT"
       if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
         return "Computer"
+      if (v ~ /(samsung|huawei|sony|lg|oneplus|htc)/)
+        return "Phone"
+
       return "Unknown"
     }
 
-    function trunc(s, w) {
-      if (length(s) > w) return substr(s, 1, w-1) "…"
-      return s
+    function trunc(s,w){ return length(s)>w ? substr(s,1,w-1)"…" : s }
+
+    /^Nmap scan report for/{
+      host="[UNKNOWN]"; ip=$NF; mac="-"; ven="-"
+      if ($0~/\(/){ match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
     }
 
-    /^Nmap scan report for/ {
-      hostname = "[UNKNOWN]"
-      ip = ""
-      mac = "-"
-      vendor = "-"
-
-      if ($0 ~ /\(.*\)/) {
-        match($0, /for ([^ ]+) \(([^)]+)\)/, m)
-        hostname = m[1]
-        ip = m[2]
-      } else {
-        ip = $NF
-      }
-      next
+    /MAC Address:/{
+      mac=$3; ven=$4; for(i=5;i<=NF;i++) ven=ven" "$i
     }
 
-    /MAC Address:/ {
-      mac = $3
-      vendor = $4
-      for (i=5; i<=NF; i++) vendor = vendor " " $i
-      next
-    }
-
-    /Host is up/ {
-      if (mac == "-" && ip in win_mac) {
-        mac = win_mac[ip]
-        vendor = "[Windows]"
+    /Host is up/{
+      if (mac=="-") {
+        if (ip in win){ mac=win[ip]; ven="[Windows]" }
+        else if (ip in lin){ mac=lin[ip]; ven="[Linux]" }
       }
 
-      type = classify(hostname, vendor)
+      type=classify(host,ven)
+      if (ip in alias_host) host=alias_host[ip]
+      if (ip in alias_type) type=alias_type[ip]
 
-      if (ip in alias_host && alias_host[ip] != "-")
-        hostname = alias_host[ip]
-      if (ip in alias_type && alias_type[ip] != "")
-        type = alias_type[ip]
+      hc=sprintf("%-32s",trunc(host,32))
+      vc=sprintf("%-36s",trunc(ven,36))
+      if (host=="[UNKNOWN]" && RED!="") sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
 
-      host_cell = sprintf("%-32s", trunc(hostname, 32))
-      vend_cell = sprintf("%-36s", trunc(vendor, 36))
-
-      if (hostname == "[UNKNOWN]" && RED != "") {
-        sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, host_cell)
-      }
-
-      printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
-        ip, host_cell, type, mac, vend_cell
+      printf "  | %-15s | %s | %-10s | %-17s | %s |\n", ip,hc,type,mac,vc
     }
   ' | sort -V
 
