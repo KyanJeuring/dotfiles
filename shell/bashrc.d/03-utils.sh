@@ -224,23 +224,41 @@ _netscan_linux() {
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
   sudo nmap -sn "$SUBNET" |
-  awk -v RED="$RED" -v RESET="$RESET" '
+  awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$HOME/.config/netaliases" '
+    BEGIN {
+      if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
+        do {
+          if ($0 ~ /^#/ || NF < 2) continue
+          alias_host[$1] = $2
+          alias_type[$1] = (NF >= 3 ? $3 : "")
+        } while (getline < ALIAS_FILE)
+        close(ALIAS_FILE)
+      }
+    }
+
     function classify(host, vendor) {
-      h=tolower(host); v=tolower(vendor)
-      if (h~/(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
-      if (h~/(print|printer|mfc|brother)/) return "Printer"
-      if (h~/(android|iphone|pixel|oppo)/) return "Phone"
-      if (h~/(cam|camera|nvr)/) return "Camera"
-      if (v~/proxmox/) return "Server"
-      if (v~/dahua/) return "Camera"
-      if (v~/amazon/) return "IoT"
-      if (v~/(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/) return "Network"
-      if (v~/(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
-      if (v~/(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
+      h = tolower(host)
+      v = tolower(vendor)
+      if (h ~ /(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
+      if (h ~ /(print|printer|mfc|brother)/)      return "Printer"
+      if (h ~ /(android|iphone|pixel|oppo)/)      return "Phone"
+      if (h ~ /(cam|camera|nvr)/)                 return "Camera"
+      if (v ~ /proxmox/)                          return "Server"
+      if (v ~ /dahua/)                            return "Camera"
+      if (v ~ /amazon/)                           return "IoT"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
+        return "Network"
+      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/)
+        return "Phone"
+      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
+        return "Computer"
       return "Unknown"
     }
 
-    function trunc(s,w){ return length(s)>w?substr(s,1,w-1)"…":s }
+    function trunc(s, w) {
+      if (length(s) > w) return substr(s, 1, w-1) "…"
+      return s
+    }
 
     /^Nmap scan report for/ {
       hostname="[UNKNOWN]"; ip=""
