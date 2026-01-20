@@ -155,32 +155,31 @@ netscan() {
     log
 
     local IP CIDR
-    IP="$(powershell.exe -NoProfile -Command \
-      "\$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
-            Sort-Object -Property RouteMetric, InterfaceMetric |
-            Select-Object -First 1;
-        if (-not \$r) { exit 1 }
-        \$i = Get-NetIPInterface -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
-              Sort-Object -Property InterfaceMetric |
-              Select-Object -First 1;
-        \$a = Get-NetIPAddress -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
-              Where-Object { \$_.IPAddress -notlike '169.254*' -and \$_.PrefixOrigin -ne 'WellKnown' -and \$_.IPAddress -ne '127.0.0.1' } |
-              Sort-Object -Property SkipAsSource, AddressState |
-              Select-Object -First 1;
-        if (\$a) { \$a.IPAddress }" | tr -d '\r')"
 
-    CIDR="$(powershell.exe -NoProfile -Command \
-      "\$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
-            Sort-Object -Property RouteMetric, InterfaceMetric |
-            Select-Object -First 1;
-        if (-not \$r) { exit 1 }
-        \$a = Get-NetIPAddress -InterfaceIndex \$r.InterfaceIndex -AddressFamily IPv4 |
-              Where-Object { \$_.IPAddress -notlike '169.254*' -and \$_.PrefixOrigin -ne 'WellKnown' -and \$_.IPAddress -ne '127.0.0.1' } |
-              Select-Object -First 1;
-        if (\$a) { \$a.PrefixLength }" | tr -d '\r')"
+    IP="$(powershell.exe -NoProfile -Command '
+      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+           Sort-Object RouteMetric,InterfaceMetric |
+           Select-Object -First 1
+      if (-not $r) { exit 1 }
+      $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+           Where-Object { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
+           Select-Object -First 1
+      if ($a) { $a.IPAddress }
+    ' | tr -d '\r')"
+
+    CIDR="$(powershell.exe -NoProfile -Command '
+      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+           Sort-Object RouteMetric,InterfaceMetric |
+           Select-Object -First 1
+      if (-not $r) { exit 1 }
+      $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+           Where-Object { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
+           Select-Object -First 1
+      if ($a) { $a.PrefixLength }
+    ' | tr -d '\r')"
 
     if [[ -z "$IP" || -z "$CIDR" ]]; then
-      err "Could not determine Windows subnet (default route interface)"
+      err "Could not determine Windows subnet"
       return 1
     fi
 
@@ -201,6 +200,7 @@ netscan() {
     warn "WSL detected: network visibility is limited (NAT)"
   fi
 
+  local HEADER RED RESET
   if [[ -t 1 ]]; then
     HEADER="\033[0;34m\033[1m"
     RED="\033[0;31m\033[1m"
@@ -221,14 +221,23 @@ netscan() {
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
+  local WIN_ARP=""
+  if is_gitbash; then
+    WIN_ARP="$(powershell.exe -NoProfile -Command '
+      Get-NetNeighbor -AddressFamily IPv4 |
+      Where-Object { $_.State -eq "Reachable" } |
+      ForEach-Object { "$($_.IPAddress) $($_.LinkLayerAddress)" }
+    ' | tr -d '\r')"
+  fi
 
   if command -v sudo >/dev/null 2>&1 && ! is_gitbash; then
     sudo nmap -sn "$SUBNET"
   else
     nmap -sn "$SUBNET"
   fi |
-
-    awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$HOME/.config/netaliases" '
+  awk -v RED="$RED" -v RESET="$RESET" \
+      -v ALIAS_FILE="$HOME/.config/netaliases" \
+      -v WIN_ARP="$WIN_ARP" '
     BEGIN {
       if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
         do {
@@ -237,6 +246,14 @@ netscan() {
           alias_type[$1] = (NF >= 3 ? $3 : "")
         } while (getline < ALIAS_FILE)
         close(ALIAS_FILE)
+      }
+
+      if (WIN_ARP != "") {
+        n = split(WIN_ARP, lines, "\n")
+        for (i = 1; i <= n; i++) {
+          split(lines[i], f, " ")
+          win_mac[f[1]] = f[2]
+        }
       }
     }
 
@@ -286,6 +303,11 @@ netscan() {
     }
 
     /Host is up/ {
+      if (mac == "-" && ip in win_mac) {
+        mac = win_mac[ip]
+        vendor = "[Windows]"
+      }
+
       type = classify(hostname, vendor)
 
       if (ip in alias_host && alias_host[ip] != "-")
