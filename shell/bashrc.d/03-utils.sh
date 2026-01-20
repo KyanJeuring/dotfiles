@@ -129,6 +129,64 @@ netneighbors() {
   warn "Only shows devices this machine has recently seen"
 }
 
+### Edit netscan alias file for current subnet
+_netscan_edit_aliases() {
+  local IFACE NET_ID GW_IP GW_MAC NET_ID_FILE ALIAS_FILE EDITOR_CMD
+
+  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+  [[ -z "$IFACE" ]] && { err "Could not determine active interface"; return 1; }
+
+  NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
+  [[ -z "$NET_ID" ]] && { err "Could not determine subnet"; return 1; }
+
+  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
+  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
+
+  NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
+  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
+
+  mkdir -p "$HOME/.config/netaliases"
+
+  # Create file with template if missing
+  if [[ ! -f "$ALIAS_FILE" ]]; then
+    cat >"$ALIAS_FILE" <<EOF
+# netscan aliases for:
+#   Interface : $IFACE
+#   Subnet    : $NET_ID
+#   Gateway   : $GW_IP ($GW_MAC)
+#
+# Format:
+#   <ip> <hostname> [type]
+#
+# Examples:
+#   192.168.2.250 dfkj-proxmox-host Server
+#   192.168.2.76  brother-printer  Printer
+#   192.168.2.201 -                Server
+#
+# Use '-' to keep detected hostname but override type.
+# Lines starting with '#' are ignored.
+
+EOF
+    ok "Created alias file:"
+    ok "  $ALIAS_FILE"
+  else
+    info "Editing alias file:"
+    info "  $ALIAS_FILE"
+  fi
+
+  # Pick editor
+  EDITOR_CMD="${EDITOR:-}"
+  [[ -z "$EDITOR_CMD" ]] && command -v nano >/dev/null && EDITOR_CMD="nano"
+  [[ -z "$EDITOR_CMD" ]] && command -v vi   >/dev/null && EDITOR_CMD="vi"
+
+  if [[ -z "$EDITOR_CMD" ]]; then
+    err "No editor found (set \$EDITOR)"
+    return 1
+  fi
+
+  "$EDITOR_CMD" "$ALIAS_FILE"
+}
+
 ### netscan for Windows systems (Git Bash)
 netscan_windows() {
   info "Scanning local network for devices"
@@ -330,6 +388,15 @@ _netscan_linux() {
 
 ## Scan local network for connected devices
 netscan() {
+    case "${1:-}" in
+    --edit-aliases)
+      _netscan_edit_aliases
+      ;;
+    *)
+      _netscan_linux
+      ;;
+  esac
+
   is_gitbash() { [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; }
 
   if is_gitbash; then
@@ -337,6 +404,9 @@ netscan() {
   else
     _netscan_linux
   fi
+
+  info "To edit aliases for this subnet, run:"
+  info "  netscan --edit-aliases"
 }
 
 ## Show known network devices and optionally run active scan
