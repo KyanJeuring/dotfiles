@@ -213,7 +213,8 @@ netscan() {
   else
     nmap -sn "$SUBNET"
   fi |
-  awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$HOME/.config/netaliases" '
+
+    awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$HOME/.config/netaliases" '
     BEGIN {
       if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
         do {
@@ -237,8 +238,6 @@ netscan() {
       if (v ~ /amazon/)                           return "IoT"
       if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
         return "Network"
-      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/)
-        return "Phone"
       if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
         return "Computer"
       return "Unknown"
@@ -252,6 +251,8 @@ netscan() {
     /^Nmap scan report for/ {
       hostname = "[UNKNOWN]"
       ip = ""
+      mac = "-"
+      vendor = "-"
 
       if ($0 ~ /\(.*\)/) {
         match($0, /for ([^ ]+) \(([^)]+)\)/, m)
@@ -260,13 +261,17 @@ netscan() {
       } else {
         ip = $NF
       }
+      next
     }
 
     /MAC Address:/ {
       mac = $3
       vendor = $4
       for (i=5; i<=NF; i++) vendor = vendor " " $i
+      next
+    }
 
+    /Host is up/ {
       type = classify(hostname, vendor)
 
       if (ip in alias_host && alias_host[ip] != "-")
