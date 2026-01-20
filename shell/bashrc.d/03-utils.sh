@@ -153,8 +153,8 @@ netscan() {
   warn "Active scan (ARP/ICMP)"
   log
 
-  printf "  %-15s  %-15s  %-17s  %s\n" "IP" "Hostname" "MAC" "Manufacturer"
-  printf "  %-15s  %-15s  %-17s  %s\n" \
+  printf "  %-15s  %-15s  %-17s  %s\n \033[0;34m\033[1m" "IP" "Hostname" "MAC" "Manufacturer"
+  printf "  %-15s  %-15s  %-17s  %s\n \033[0m" \
     "---------------" "---------------" "-----------------" "----------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
@@ -168,12 +168,12 @@ netscan() {
       h=tolower(host)
       v=tolower(vendor)
 
-      if (h ~ /android|iphone/)        return "Phone"
-      if (h ~ /proxmox|lxc/)           return "Server"
-      if (v ~ /proxmox/)               return "Server"
-      if (v ~ /hewlett packard|hp/)    return "Printer"
-      if (v ~ /dahua/)                 return "Camera"
-      if (v ~ /amazon/)                return "IoT"
+      if (h ~ /android|iphone|oppo/)        return "Phone"
+      if (h ~ /proxmox|lxc/)               return "Server"
+      if (v ~ /proxmox/)                   return "Server"
+      if (v ~ /hewlett packard|hp/)        return "Printer"
+      if (v ~ /dahua/)                     return "Camera"
+      if (v ~ /amazon/)                    return "IoT"
       if (v ~ /netgear|arcadyan|sagemcom|kreatel/) return "Network"
 
       return "Unknown"
@@ -199,15 +199,17 @@ netscan() {
 
       type=classify(hostname, vendor)
 
-      host_display=hostname
+      # Pad hostname BEFORE coloring
+      padded_host = sprintf("%-24s", hostname)
+
       if (hostname == "[UNKNOWN]" && RED != "") {
-        host_display=RED hostname RESET
+        padded_host = RED padded_host RESET
       }
 
-      printf "  %-15s  %-15s  %-9s  %-17s  %s\n",
-        ip, host_display, type, mac, vendor
+      printf "  %-15s  %s  %-10s  %-17s  %s\n",
+        ip, padded_host, type, mac, vendor
     }
-  ' | sort -t$'\t' -k3,3 -k1,1
+  ' | sort -V
 
   log
   ok "Scan completed"
