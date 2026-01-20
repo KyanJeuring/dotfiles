@@ -196,23 +196,39 @@ netscan_windows() {
 
   command -v nmap >/dev/null || { err "nmap is not installed"; return 1; }
 
+  if [[ -t 1 ]]; then
+    HEADER="\033[0;34m\033[1m"
+    RED="\033[0;31m\033[1m"
+    RESET="\033[0m"
+  else
+    HEADER=""; RED=""; RESET=""
+  fi
+
   local IP CIDR SUBNET
 
   IP="$(powershell.exe -NoProfile -Command '
-    $r=Get-NetRoute -DestinationPrefix "0.0.0.0/0"|Sort RouteMetric,InterfaceMetric|Select -First 1
+    $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+         Sort-Object RouteMetric,InterfaceMetric |
+         Select-Object -First 1
     (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-     Where { $_.IPAddress -notlike "169.254*" })[0].IPAddress
+     Where-Object { $_.IPAddress -notlike "169.254*" })[0].IPAddress
   ' | tr -d "\r")"
 
   CIDR="$(powershell.exe -NoProfile -Command '
-    $r=Get-NetRoute -DestinationPrefix "0.0.0.0/0"|Sort RouteMetric,InterfaceMetric|Select -First 1
+    $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+         Sort-Object RouteMetric,InterfaceMetric |
+         Select-Object -First 1
     (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-     Where { $_.IPAddress -notlike "169.254*" })[0].PrefixLength
+     Where-Object { $_.IPAddress -notlike "169.254*" })[0].PrefixLength
   ' | tr -d "\r")"
 
   SUBNET="$IP/$CIDR"
 
-  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+  info "Subnet    : $SUBNET"
+  warn "Active scan (ICMP)"
+  log
+
+  printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
@@ -221,25 +237,76 @@ netscan_windows() {
   local ARP
   ARP="$(powershell.exe -NoProfile -Command '
     Get-NetNeighbor -AddressFamily IPv4 |
-    Where { $_.State -eq "Reachable" } |
-    ForEach { "$($_.IPAddress) $($_.LinkLayerAddress)" }
+    Where-Object { $_.State -eq "Reachable" } |
+    ForEach-Object { "$($_.IPAddress) $($_.LinkLayerAddress)" }
   ' | tr -d "\r")"
 
   nmap -sn "$SUBNET" |
-  awk -v ARP="$ARP" '
-    BEGIN{
-      n=split(ARP,a,"\n")
-      for(i=1;i<=n;i++){ split(a[i],f," "); mac[f[1]]=f[2] }
+  awk -v ARP="$ARP" -v RED="$RED" -v RESET="$RESET" '
+    BEGIN {
+      n = split(ARP, a, "\n")
+      for (i=1; i<=n; i++) {
+        split(a[i], f, " ")
+        mac[f[1]] = f[2]
+      }
     }
-    /^Nmap scan report for/{
-      ip=$NF; host="[UNKNOWN]"
-      if($0~/\(/){ match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
+
+    function classify(host, vendor) {
+      h = tolower(host)
+
+      if (h ~ /(proxmox|pve|lxc|kvm)/) return "Server"
+      if (h ~ /(nas|storage)/) return "Storage"
+      if (h ~ /(print|printer|mfc|brother|epson|canon)/) return "Printer"
+      if (h ~ /(cam|camera|nvr)/) return "Camera"
+      if (h ~ /(switch|router|firewall|ap)/) return "Network"
+      if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
+      if (h ~ /(laptop|desktop|pc|workstation|notebook|macbook)/) return "Computer"
+
+      if (h ~ /(iphone|ipad|pixel)/) return "Phone"
+      if (h ~ /(galaxy|s[0-9]{2}|note[0-9]?)/) return "Phone"
+      if (h ~ /(redmi|xiaomi|mi[0-9])/ ) return "Phone"
+      if (h ~ /(oneplus|oppo|realme)/) return "Phone"
+      if (h ~ /(huawei|honor|sony|xperia|lg|htc)/) return "Phone"
+
+      return "Unknown"
     }
-    /Host is up/{
-      printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n",
-        ip,host,"Unknown",(ip in mac?mac[ip]:"-"),"[Windows]"
+
+    function trunc(s,w){ return (length(s)>w)?substr(s,1,w-1)"…":s }
+
+    /^Nmap scan report for/ {
+      hostname="[UNKNOWN]"
+      ip=$NF
+      if ($0 ~ /\(/) {
+        match($0,/for ([^ ]+) \(([^)]+)\)/,m)
+        hostname=m[1]; ip=m[2]
+      }
+    }
+
+    /Host is up/ {
+      type = classify(hostname, "")
+      hc = sprintf("%-32s", trunc(hostname,32))
+
+      if (hostname=="[UNKNOWN]" && RED!="")
+        sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
+
+      printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n",
+        ip,
+        hc,
+        type,
+        (ip in mac ? mac[ip] : "-"),
+        "[Windows]"
     }
   ' | sort -V
+
+  SELF_HOST="$(powershell.exe -NoProfile -Command '$env:COMPUTERNAME' | tr -d "\r")"
+  SELF_MAC="$(powershell.exe -NoProfile -Command '
+    (Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1).MacAddress
+  ' | tr -d "\r")"
+
+  SELF_HOST_CELL="$(printf '%-32s' "$(printf '%.32s' "$SELF_HOST (this device)")")"
+
+  printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n" \
+    "$IP" "$SELF_HOST_CELL" "Computer" "$SELF_MAC" "[local]"
 
   log
   ok "Scan completed"
