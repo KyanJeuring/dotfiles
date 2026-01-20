@@ -148,13 +148,23 @@ netscan() {
     return 1
   fi
 
+  if [[ -t 1 ]]; then
+  HEADER="\033[0;34m\033[1m"
+  RED="\033[0;31m\033[1m"
+  RESET="\033[0m"
+  else
+    HEADER=""
+    RED=""
+    RESET=""
+  fi
+
   info "Interface : $IFACE"
   info "Subnet    : $SUBNET"
   warn "Active scan (ARP/ICMP)"
   log
 
-  printf "  %-15s  %-15s  %-17s  %s\n \033[0;34m\033[1m" "IP" "Hostname" "MAC" "Manufacturer"
-  printf "  %-15s  %-15s  %-17s  %s\n \033[0m" \
+  printf "  ${HEADER}%-15s  %-15s  %-17s  %s${RESET}\n" "IP" "Hostname" "MAC" "Manufacturer"
+  printf "  %-15s  %-15s  %-17s  %s\n" \
     "---------------" "---------------" "-----------------" "----------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
@@ -163,7 +173,7 @@ netscan() {
     nmap -sn "$SUBNET"
   fi |
 
-  awk -v RED="\033[0;31m\033[1m" -v RESET="\033[0m" '
+  awk -v RED="${RED}" -v RESET="${RESET}" '
     function classify(host, vendor) {
       h=tolower(host)
       v=tolower(vendor)
