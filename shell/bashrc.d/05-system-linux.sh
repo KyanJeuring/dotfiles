@@ -124,7 +124,7 @@ sysupdate() {
   info "Detected distro: $NAME"
 
   case "$ID" in
-    ubuntu|debian|linuxmint|pop)
+    ubuntu|debian|raspbian|linuxmint|pop)
       sudo apt update && sudo apt upgrade
       ;;
     arch|manjaro|endeavouros)
