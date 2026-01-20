@@ -163,11 +163,11 @@ netscan() {
   warn "Active scan (ARP/ICMP)"
   log
 
-  printf "  ${HEADER}| %-15s | %-28s | %-10s | %-17s | %s |${RESET}\n" \
-    "IP" "Hostname" "Type" "MAC" "Manufacturer"
+printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-28s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-32s${RESET} |\n" \
+  "IP" "Hostname" "Type" "MAC" "Manufacturer"
 
-  printf "  ${HEADER}| %-15s | %-28s | %-10s | %-17s | %s |${RESET}\n" \
-    "---------------" "----------------------------" "----------" "-----------------" "----------------------------"
+printf "  | %-15s | %-28s | %-10s | %-17s | %-32s |\n" \
+  "---------------" "----------------------------" "----------" "-----------------" "--------------------------------"
 
   if command -v sudo >/dev/null 2>&1; then
     sudo nmap -sn "$SUBNET"
@@ -217,15 +217,15 @@ netscan() {
 
       type=classify(hostname, vendor)
 
-      host_raw=hostname
       host_disp=trunc(hostname, 28)
+      vendor_disp=trunc(vendor, 32)
 
-      if (host_raw == "[UNKNOWN]" && RED != "") {
+      if (hostname == "[UNKNOWN]" && RED != "") {
         host_disp = RED host_disp RESET
       }
 
-      printf "  | %-15s | %-28s | %-10s | %-17s | %s |\n",
-        ip, host_disp, type, mac, vendor
+      printf "  | %-15s | %-28s | %-10s | %-17s | %-32s |\n",
+        ip, host_disp, type, mac, vendor_disp
     }
   ' | sort -V
 
