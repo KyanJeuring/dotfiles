@@ -162,18 +162,32 @@ netscan() {
   else
     nmap -sn "$SUBNET"
   fi |
-  awk '
+
+  awk -v RED="\033[0;31m\033[1m" -v RESET="\033[0m" '
+    function classify(host, vendor) {
+      h=tolower(host)
+      v=tolower(vendor)
+
+      if (h ~ /android|iphone/)        return "Phone"
+      if (h ~ /proxmox|lxc/)           return "Server"
+      if (v ~ /proxmox/)               return "Server"
+      if (v ~ /hewlett packard|hp/)    return "Printer"
+      if (v ~ /dahua/)                 return "Camera"
+      if (v ~ /amazon/)                return "IoT"
+      if (v ~ /netgear|arcadyan|sagemcom|kreatel/) return "Network"
+
+      return "Unknown"
+    }
+
     /^Nmap scan report for/ {
-      hostname="-"
+      hostname="[UNKNOWN]"
       ip=""
 
-      # Case: hostname + IP in parentheses
       if ($0 ~ /\(.*\)/) {
         match($0, /for ([^ ]+) \(([^)]+)\)/, m)
         hostname=m[1]
         ip=m[2]
       } else {
-        # Case: IP only
         ip=$NF
       }
     }
@@ -182,9 +196,18 @@ netscan() {
       mac=$3
       vendor=$4
       for (i=5; i<=NF; i++) vendor=vendor" "$i
-      printf "  %-15s  %-15s  %-17s  %s\n", ip, hostname, mac, vendor
+
+      type=classify(hostname, vendor)
+
+      host_display=hostname
+      if (hostname == "[UNKNOWN]" && RED != "") {
+        host_display=RED hostname RESET
+      }
+
+      printf "  %-15s  %-15s  %-9s  %-17s  %s\n",
+        ip, host_display, type, mac, vendor
     }
-  ' | sort -V
+  ' | sort -t$'\t' -k3,3 -k1,1
 
   log
   ok "Scan completed"
