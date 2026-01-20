@@ -129,59 +129,85 @@ netneighbors() {
   warn "Only shows devices this machine has recently seen"
 }
 
-## Scan local network for connected devices
-netscan() {
+### netscan for Windows systems (Git Bash)
+netscan_windows() {
+  info "Scanning local network for devices"
+  log
+  info "Environment : Windows (Git Bash)"
+  warn "Using Windows host network"
+  log
+
+  command -v nmap >/dev/null || { err "nmap is not installed"; return 1; }
+
+  local IP CIDR SUBNET
+
+  IP="$(powershell.exe -NoProfile -Command '
+    $r=Get-NetRoute -DestinationPrefix "0.0.0.0/0"|Sort RouteMetric,InterfaceMetric|Select -First 1
+    (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+     Where { $_.IPAddress -notlike "169.254*" })[0].IPAddress
+  ' | tr -d "\r")"
+
+  CIDR="$(powershell.exe -NoProfile -Command '
+    $r=Get-NetRoute -DestinationPrefix "0.0.0.0/0"|Sort RouteMetric,InterfaceMetric|Select -First 1
+    (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
+     Where { $_.IPAddress -notlike "169.254*" })[0].PrefixLength
+  ' | tr -d "\r")"
+
+  SUBNET="$IP/$CIDR"
+
+  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+    "IP" "Hostname" "Type" "MAC" "Manufacturer"
+
+  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+    "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
+
+  local ARP
+  ARP="$(powershell.exe -NoProfile -Command '
+    Get-NetNeighbor -AddressFamily IPv4 |
+    Where { $_.State -eq "Reachable" } |
+    ForEach { "$($_.IPAddress) $($_.LinkLayerAddress)" }
+  ' | tr -d "\r")"
+
+  nmap -sn "$SUBNET" |
+  awk -v ARP="$ARP" '
+    BEGIN{
+      n=split(ARP,a,"\n")
+      for(i=1;i<=n;i++){ split(a[i],f," "); mac[f[1]]=f[2] }
+    }
+    /^Nmap scan report for/{
+      ip=$NF; host="[UNKNOWN]"
+      if($0~/\(/){ match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
+    }
+    /Host is up/{
+      printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n",
+        ip,host,"Unknown",(ip in mac?mac[ip]:"-"),"[Windows]"
+    }
+  ' | sort -V
+
+  log
+  ok "Scan completed"
+}
+
+### netscan for Linux systems
+_netscan_linux() {
   info "Scanning local network for devices"
   log
 
-  command -v nmap >/dev/null 2>&1 || { err "nmap is not installed"; return 1; }
-
-  is_gitbash() { [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; }
-  is_wsl() { grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; }
-
-  local IFACE SUBNET
-
-  if is_gitbash; then
-    info "Environment : Windows (Git Bash)"
-    warn "Using Windows host network"
-    log
-
-    local IP CIDR
-    IP="$(powershell.exe -NoProfile -Command '
-      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-           Sort RouteMetric,InterfaceMetric |
-           Select -First 1
-      $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-           Where { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
-           Select -First 1
-      $a.IPAddress
-    ' | tr -d '\r')"
-
-    CIDR="$(powershell.exe -NoProfile -Command '
-      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-           Sort RouteMetric,InterfaceMetric |
-           Select -First 1
-      $a = Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-           Where { $_.IPAddress -notlike "169.254*" -and $_.IPAddress -ne "127.0.0.1" } |
-           Select -First 1
-      $a.PrefixLength
-    ' | tr -d '\r')"
-
-    [[ -z "$IP" || -z "$CIDR" ]] && { err "Could not determine Windows subnet"; return 1; }
-
-    IFACE="Windows Default Route"
-    SUBNET="$IP/$CIDR"
-  else
-    IFACE="$(ip route | awk '/default/ {print $5; exit}')"
-    SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
-    [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
+  if ! command -v nmap >/dev/null 2>&1; then
+    err "nmap is not installed"
+    return 1
   fi
 
-  is_wsl && warn "WSL detected: network visibility is limited (NAT)"
+  local IFACE SUBNET
+  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+  SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
 
-  local HEADER RED RESET
+  [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
+
   if [[ -t 1 ]]; then
-    HEADER="\033[1;34m"; RED="\033[1;31m"; RESET="\033[0m"
+    HEADER="\033[0;34m\033[1m"
+    RED="\033[0;31m\033[1m"
+    RESET="\033[0m"
   else
     HEADER=""; RED=""; RESET=""
   fi
@@ -197,115 +223,55 @@ netscan() {
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
-  local WIN_ARP="" LINUX_ARP=""
-
-  if is_gitbash; then
-    WIN_ARP="$(powershell.exe -NoProfile -Command '
-      Get-NetNeighbor -AddressFamily IPv4 |
-      Where { $_.State -eq "Reachable" } |
-      ForEach-Object { "$($_.IPAddress) $($_.LinkLayerAddress)" }
-    ' | tr -d '\r')"
-  else
-    LINUX_ARP="$(ip neigh | awk '$1 ~ /^[0-9]+\./ && $5 ~ /:/ { print $1, toupper($5) }')"
-  fi
-
-  { command -v sudo >/dev/null 2>&1 && ! is_gitbash && sudo nmap -sn "$SUBNET" || nmap -sn "$SUBNET"; } |
-  awk -v RED="$RED" -v RESET="$RESET" \
-      -v ALIAS_FILE="$HOME/.config/netaliases" \
-      -v WIN_ARP="$WIN_ARP" \
-      -v LINUX_ARP="$LINUX_ARP" '
-    BEGIN {
-      if ((getline < ALIAS_FILE) > 0) {
-        do {
-          if ($0 !~ /^#/ && NF >= 2) {
-            alias_host[$1] = $2
-            if (NF >= 3) alias_type[$1] = $3
-          }
-        } while (getline < ALIAS_FILE)
-        close(ALIAS_FILE)
-      }
-
-      n = split(WIN_ARP, w, "\n"); for (i=1;i<=n;i++){ split(w[i],f," "); win[f[1]]=f[2] }
-      n = split(LINUX_ARP, l, "\n"); for (i=1;i<=n;i++){ split(l[i],f," "); lin[f[1]]=f[2] }
-    }
-
+  sudo nmap -sn "$SUBNET" |
+  awk -v RED="$RED" -v RESET="$RESET" '
     function classify(host, vendor) {
-      h = tolower(host)
-      v = tolower(vendor)
-      if (h ~ /(proxmox|pve|lxc|kvm|vm|hypervisor)/) return "Server"
-      if (h ~ /(nas|storage)/)                      return "Server"
-      if (h ~ /(server|host|node)/)                 return "Server"
-      if (h ~ /(website|web|api|backend|frontend)/) return "Server"
-      if (h ~ /(printer|print|brother|mfc|laserjet|deskjet)/)
-        return "Printer"
-      if (h ~ /(cam|camera|nvr|dvr)/)
-        return "Camera"
-      if (h ~ /(iphone|ipad|android|pixel|oppo|redmi|xiaomi)/)
-        return "Phone"
-      if (h ~ /(router|gateway|modem|switch|ap|wifi)/)
-        return "Network"
-      if (h ~ /\.(kpn|ziggo|vodafone|t-mobile)$/)
-        return "Network"
-      if (v !~ /^\[(linux|arp|windows)\]$/) {
-        if (v ~ /proxmox/)                          return "Server"
-        if (v ~ /(dahua|hikvision)/)               return "Camera"
-        if (v ~ /(arcadyan|sagemcom)/)             return "Network"
-        if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link)/)
-          return "Network"
-        if (v ~ /(amazon|tuya|esp)/)               return "IoT"
-        if (v ~ /(samsung|huawei|sony|lg|oneplus|htc)/)
-          return "Phone"
-        if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/)
-          return "Computer"
-      }
-
+      h=tolower(host); v=tolower(vendor)
+      if (h~/(proxmox|pve|lxc|kvm|nas|storage)/) return "Server"
+      if (h~/(print|printer|mfc|brother)/) return "Printer"
+      if (h~/(android|iphone|pixel|oppo)/) return "Phone"
+      if (h~/(cam|camera|nvr)/) return "Camera"
+      if (v~/proxmox/) return "Server"
+      if (v~/dahua/) return "Camera"
+      if (v~/amazon/) return "IoT"
+      if (v~/(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/) return "Network"
+      if (v~/(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
+      if (v~/(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
       return "Unknown"
     }
 
-    function trunc(s,w){ return length(s)>w ? substr(s,1,w-1)"…" : s }
+    function trunc(s,w){ return length(s)>w?substr(s,1,w-1)"…":s }
 
-    /^Nmap scan report for/{
-      host="[UNKNOWN]"; ip=$NF; mac="-"; ven="-"
-      if ($0~/\(/){ match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
+    /^Nmap scan report for/ {
+      hostname="[UNKNOWN]"; ip=""
+      if ($0~/\(/){ match($0,/for ([^ ]+) \(([^)]+)\)/,m); hostname=m[1]; ip=m[2] }
+      else ip=$NF
     }
 
-    /MAC Address:/{
-      mac=$3; ven=$4; for(i=5;i<=NF;i++) ven=ven" "$i
-    }
-
-    /Host is up/ {
-      if (mac != "-") {
-        # nothing to do
-      }
-      else if (ip in win) {
-        mac = win[ip]
-        ven = "[Windows]"
-      }
-      # Linux fallback ONLY if nmap failed
-      else if (ip in lin) {
-        mac = lin[ip]
-        ven = "[ARP]"
-      }
-
-      type = classify(host, ven)
-
-      if (ip in alias_host) host = alias_host[ip]
-      if (ip in alias_type) type = alias_type[ip]
-
-      hc = sprintf("%-32s", trunc(host, 32))
-      vc = sprintf("%-36s", trunc(ven, 36))
-
-      if (host == "[UNKNOWN]" && RED != "") {
-        sub(/^\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, hc)
-      }
-
-      printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
-        ip, hc, type, mac, vc
+    /MAC Address:/ {
+      mac=$3; vendor=$4
+      for(i=5;i<=NF;i++) vendor=vendor" "$i
+      type=classify(hostname,vendor)
+      hc=sprintf("%-32s",trunc(hostname,32))
+      vc=sprintf("%-36s",trunc(vendor,36))
+      if(hostname=="[UNKNOWN]"&&RED!="") sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
+      printf "  | %-15s | %s | %-10s | %-17s | %s |\n", ip,hc,type,mac,vc
     }
   ' | sort -V
 
   log
   ok "Scan completed"
+}
+
+## Scan local network for connected devices
+netscan() {
+  is_gitbash() { [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; }
+
+  if is_gitbash; then
+    netscan_windows
+  else
+    _netscan_linux
+  fi
 }
 
 ## Show known network devices and optionally run active scan
