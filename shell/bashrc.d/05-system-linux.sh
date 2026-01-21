@@ -109,7 +109,7 @@ usbmount() {
   local MNT
 
   if [[ -z "$DEV" ]]; then
-    err "Usage: usb-mount /dev/sdXN"
+    err "Usage: usbmount /dev/sdXN"
     return 1
   fi
 
@@ -135,7 +135,7 @@ usbunmount() {
   local MNT
 
   if [[ -z "$DEV" ]]; then
-    err "Usage: usb-unmount /dev/sdXN"
+    err "Usage: usbunmount /dev/sdXN"
     return 1
   fi
 
@@ -155,7 +155,7 @@ usbeject() {
   local BASE
 
   if [[ -z "$DEV" ]]; then
-    err "Usage: usb-eject /dev/sdX or /dev/sdXN"
+    err "Usage: usbeject /dev/sdX or /dev/sdXN"
     return 1
   fi
 
