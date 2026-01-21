@@ -94,6 +94,24 @@ _usb_mountpoint() {
   fi
 }
 
+### Ensure device is removable USB
+_usb_require_removable() {
+  local DEV="$1"
+  local BASE RM
+
+  BASE="$(lsblk -no PKNAME "$DEV" 2>/dev/null)"
+  [[ -n "$BASE" ]] && DEV="/dev/$BASE"
+
+  RM="$(lsblk -no RM "$DEV" 2>/dev/null)"
+
+  if [[ "$RM" != "1" ]]; then
+    err "Refusing to operate on non-removable device: $DEV"
+    return 1
+  fi
+
+  return 0
+}
+
 ## List removable USB block devices
 usblist() {
   lsblk -o NAME,SIZE,RM,TYPE,FSTYPE,LABEL,MOUNTPOINTS \
@@ -117,6 +135,8 @@ usbmount() {
     err "Not a block device: $DEV"
     return 1
   fi
+
+  _usb_require_removable "$DEV" || return 1
 
   MNT="$(_usb_mountpoint "$DEV")"
 
@@ -153,6 +173,7 @@ usbunmount() {
 usbeject() {
   local DEV="${1:-}"
   local BASE NAME MNT
+  local MOUNTPOINTS=()
 
   if [[ -z "$DEV" ]]; then
     err "Usage: usbeject /dev/sdX or /dev/sdXN"
@@ -162,10 +183,22 @@ usbeject() {
   BASE="$(lsblk -no PKNAME "$DEV" 2>/dev/null)"
   [[ -n "$BASE" ]] && DEV="/dev/$BASE"
 
-  lsblk -nr -o NAME,MOUNTPOINTS "$DEV" | while read -r NAME MNT; do
+  _usb_require_removable "$DEV" || return 1
+
+  while read -r NAME MNT; do
     [[ -n "$MNT" ]] || continue
-    info "Unmounting /dev/$NAME from $MNT"
+    MOUNTPOINTS+=("$MNT")
+  done < <(lsblk -nr -o NAME,MOUNTPOINTS "$DEV")
+
+  for MNT in "${MOUNTPOINTS[@]}"; do
+    info "Unmounting $MNT"
     sudo umount "$MNT" || return 1
+  done
+
+  for MNT in "${MOUNTPOINTS[@]}"; do
+    if [[ "$MNT" == /mnt/usb-* ]]; then
+      rmdir "$MNT" 2>/dev/null || true
+    fi
   done
 
   if command -v udisksctl >/dev/null; then
