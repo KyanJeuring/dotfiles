@@ -192,7 +192,6 @@ _netscan_edit_aliases() {
 #   192.168.x.x - Server
 #
 # Use '-' to keep detected hostname but override type.
-# Lines starting with '#' are ignored.
 
 EOF
     ok "Created alias file:"
