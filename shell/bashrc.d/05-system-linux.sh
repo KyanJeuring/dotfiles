@@ -124,7 +124,7 @@ sysupdate() {
   info "Detected distro: $NAME"
 
   case "$ID" in
-    ubuntu|debian|raspbian|linuxmint|pop)
+    ubuntu|debian|raspbian|raspios|linuxmint|pop)
       sudo apt update && sudo apt upgrade
       ;;
     arch|manjaro|endeavouros)
@@ -140,8 +140,17 @@ sysupdate() {
       sudo apk update && sudo apk upgrade
       ;;
     *)
-      err "Unsupported distro: $ID"
-      return 1
+      # Fallback using ID_LIKE
+      if [[ "$ID_LIKE" == *debian* ]]; then
+        sudo apt update && sudo apt upgrade
+      elif [[ "$ID_LIKE" == *arch* ]]; then
+        sudo pacman -Syu
+      elif [[ "$ID_LIKE" == *rhel* || "$ID_LIKE" == *fedora* ]]; then
+        sudo dnf upgrade
+      else
+        err "Unsupported distro: $ID"
+        return 1
+      fi
       ;;
   esac
 
