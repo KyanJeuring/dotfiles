@@ -22,16 +22,31 @@ bashrc() {
   ((${#files[@]})) || return
 
   awk '
-    FNR == 1 {
-      section = ""
-    }
-
-    /^# / && !/^##/ && $0 !~ /^# [=-]+$/ {
-      section = substr($0, 3)
+    # Detect top separator
+    /^# [=]{5,}$/ {
+      if (prev_was_sep) {
+        prev_was_sep = 0
+      } else {
+        prev_was_sep = 1
+      }
       next
     }
 
-    /^## / {
+    # Capture section name only if surrounded by separators
+    prev_was_sep && /^# / {
+      section = substr($0, 3)
+      prev_was_sep = 0
+      in_section = 1
+      next
+    }
+
+    # Reset if anything else appears
+    {
+      prev_was_sep = 0
+    }
+
+    # Command description
+    /^## / && in_section {
       desc = substr($0, 4)
       getline
       if ($0 ~ /^[a-zA-Z_][a-zA-Z0-9_-]*\(\)/) {
@@ -192,6 +207,7 @@ _netscan_edit_aliases() {
 #   192.168.x.x - Server
 #
 # Use '-' to keep detected hostname but override type.
+# Lines starting with '#' are ignored.
 
 EOF
     ok "Created alias file:"
