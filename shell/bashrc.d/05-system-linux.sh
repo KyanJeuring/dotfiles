@@ -149,10 +149,10 @@ usbunmount() {
   sudo umount "$MNT" && ok "Unmounted $DEV"
 }
 
-## Safely eject a USB device (unmount + power off)
+## Safely eject a USB device (auto-unmount + power off)
 usbeject() {
   local DEV="${1:-}"
-  local BASE
+  local BASE NAME MNT
 
   if [[ -z "$DEV" ]]; then
     err "Usage: usbeject /dev/sdX or /dev/sdXN"
@@ -162,15 +162,16 @@ usbeject() {
   BASE="$(lsblk -no PKNAME "$DEV" 2>/dev/null)"
   [[ -n "$BASE" ]] && DEV="/dev/$BASE"
 
-  lsblk -ln "/dev/$(basename "$DEV")" -o NAME | tail -n +2 |
-  while read -r part; do
-    sudo umount "/mnt/usb-$part" 2>/dev/null || true
+  lsblk -nr -o NAME,MOUNTPOINTS "$DEV" | while read -r NAME MNT; do
+    [[ -n "$MNT" ]] || continue
+    info "Unmounting /dev/$NAME from $MNT"
+    sudo umount "$MNT" || return 1
   done
 
   if command -v udisksctl >/dev/null; then
     sudo udisksctl power-off -b "$DEV" && ok "Ejected $DEV"
   else
-    warn "udisksctl not installed (device unmounted only)"
+    warn "udisksctl not installed — device unmounted, safe to remove manually"
   fi
 }
 
