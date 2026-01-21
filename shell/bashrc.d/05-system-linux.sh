@@ -80,8 +80,22 @@ usb() {
 # USB mount management
 # ==================================================
 
+### Get standard mount point for a USB device
+_usb_mountpoint() {
+  local DEV="$1"
+  local LABEL
+
+  LABEL="$(lsblk -no LABEL "$DEV")"
+
+  if [[ -n "$LABEL" ]]; then
+    echo "/mnt/usb-$LABEL"
+  else
+    echo "/mnt/usb-$(basename "$DEV")"
+  fi
+}
+
 ## List removable USB block devices
-usb-list() {
+usblist() {
   lsblk -o NAME,SIZE,RM,TYPE,FSTYPE,LABEL,MOUNTPOINTS \
   | awk '
     NR==1 {print; next}
@@ -89,10 +103,10 @@ usb-list() {
   '
 }
 
-## Mount a USB partition to /mnt/usb
-usb-mount() {
+## Mount a USB device to /mnt/usb-<label> or /mnt/usb-<device>
+usbmount() {
   local DEV="${1:-}"
-  local MNT="/mnt/usb"
+  local MNT
 
   if [[ -z "$DEV" ]]; then
     err "Usage: usb-mount /dev/sdXN"
@@ -104,30 +118,39 @@ usb-mount() {
     return 1
   fi
 
-  sudo mkdir -p "$MNT" || return 1
+  MNT="$(_usb_mountpoint "$DEV")"
 
   if mount | grep -q "on $MNT "; then
-    warn "$MNT is already mounted"
-    return 1
-  fi
-
-  sudo mount "$DEV" "$MNT" && ok "Mounted $DEV at $MNT"
-}
-
-## Unmount /mnt/usb
-usb-umount() {
-  local MNT="/mnt/usb"
-
-  if ! mount | grep -q "on $MNT "; then
-    err "$MNT is not mounted"
+    warn "$DEV already mounted at $MNT"
     return 0
   fi
 
-  sudo umount "$MNT" && ok "Unmounted $MNT"
+  sudo mkdir -p "$MNT" || return 1
+  sudo mount "$DEV" "$MNT" && ok "Mounted $DEV at $MNT"
+}
+
+## Unmount a USB device
+usbunmount() {
+  local DEV="${1:-}"
+  local MNT
+
+  if [[ -z "$DEV" ]]; then
+    err "Usage: usb-unmount /dev/sdXN"
+    return 1
+  fi
+
+  MNT="$(_usb_mountpoint "$DEV")"
+
+  if ! mount | grep -q "on $MNT "; then
+    warn "$DEV is not mounted"
+    return 0
+  fi
+
+  sudo umount "$MNT" && ok "Unmounted $DEV"
 }
 
 ## Safely eject a USB device (unmount + power off)
-usb-eject() {
+usbeject() {
   local DEV="${1:-}"
   local BASE
 
@@ -139,27 +162,16 @@ usb-eject() {
   BASE="$(lsblk -no PKNAME "$DEV" 2>/dev/null)"
   [[ -n "$BASE" ]] && DEV="/dev/$BASE"
 
-  sudo umount /mnt/usb 2>/dev/null || true
+  lsblk -ln "/dev/$(basename "$DEV")" -o NAME | tail -n +2 |
+  while read -r part; do
+    sudo umount "/mnt/usb-$part" 2>/dev/null || true
+  done
 
   if command -v udisksctl >/dev/null; then
     sudo udisksctl power-off -b "$DEV" && ok "Ejected $DEV"
   else
     warn "udisksctl not installed (device unmounted only)"
   fi
-}
-
-## Mount first removable USB partition found
-usb-auto() {
-  local DEV
-
-  DEV="$(lsblk -rpno NAME,RM,TYPE | awk '$2==1 && $3=="part" {print; exit}')"
-
-  if [[ -z "$DEV" ]]; then
-    err "No removable USB partition found"
-    return 1
-  fi
-
-  usb-mount "$DEV"
 }
 
 # ==================================================
