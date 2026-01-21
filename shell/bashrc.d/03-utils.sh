@@ -123,9 +123,9 @@ netifaces() {
 
   ip -o link show | awk -F': ' '{print $2}' | while read -r iface; do
     state="$(cat /sys/class/net/$iface/operstate 2>/dev/null)"
-    if iw dev "$iface" info >/dev/null 2>&1; then
+    if [[ "$iface" =~ ^wl ]]; then
       type="Wi-Fi"
-    elif [[ "$iface" =~ ^e ]]; then
+    elif [[ "$iface" =~ ^en ]]; then
       type="Ethernet"
     else
       type="Other"
@@ -138,7 +138,7 @@ netifaces() {
 
 ### Get default Wi-Fi interface name
 _wifi_iface() {
-  iw dev 2>/dev/null | awk '$1=="Interface"{print $2; exit}'
+  ip -o link show | awk -F': ' '$2 ~ /^wl/ {print $2; exit}'
 }
 
 ### Get default Ethernet interface name
