@@ -41,7 +41,7 @@ psmem() {
 ## Find process by name
 psfind() {
   [[ -z "$1" ]] && {
-    log "Usage: psfind <name>"
+    err "Usage: psfind <name>"
     return 1
   }
 
@@ -77,13 +77,99 @@ usb() {
 }
 
 # ==================================================
+# USB mount management
+# ==================================================
+
+## List removable USB block devices
+usb-list() {
+  lsblk -o NAME,SIZE,RM,TYPE,FSTYPE,LABEL,MOUNTPOINTS \
+  | awk '
+    NR==1 {print; next}
+    $3 == 1 && ($4 == "disk" || $4 == "part") {print}
+  '
+}
+
+## Mount a USB partition to /mnt/usb
+usb-mount() {
+  local DEV="${1:-}"
+  local MNT="/mnt/usb"
+
+  if [[ -z "$DEV" ]]; then
+    err "Usage: usb-mount /dev/sdXN"
+    return 1
+  fi
+
+  if [[ ! -b "$DEV" ]]; then
+    err "Not a block device: $DEV"
+    return 1
+  fi
+
+  sudo mkdir -p "$MNT" || return 1
+
+  if mount | grep -q "on $MNT "; then
+    warn "$MNT is already mounted"
+    return 1
+  fi
+
+  sudo mount "$DEV" "$MNT" && ok "Mounted $DEV at $MNT"
+}
+
+## Unmount /mnt/usb
+usb-umount() {
+  local MNT="/mnt/usb"
+
+  if ! mount | grep -q "on $MNT "; then
+    err "$MNT is not mounted"
+    return 0
+  fi
+
+  sudo umount "$MNT" && ok "Unmounted $MNT"
+}
+
+## Safely eject a USB device (unmount + power off)
+usb-eject() {
+  local DEV="${1:-}"
+  local BASE
+
+  if [[ -z "$DEV" ]]; then
+    err "Usage: usb-eject /dev/sdX or /dev/sdXN"
+    return 1
+  fi
+
+  BASE="$(lsblk -no PKNAME "$DEV" 2>/dev/null)"
+  [[ -n "$BASE" ]] && DEV="/dev/$BASE"
+
+  sudo umount /mnt/usb 2>/dev/null || true
+
+  if command -v udisksctl >/dev/null; then
+    sudo udisksctl power-off -b "$DEV" && ok "Ejected $DEV"
+  else
+    warn "udisksctl not installed (device unmounted only)"
+  fi
+}
+
+## Mount first removable USB partition found
+usb-auto() {
+  local DEV
+
+  DEV="$(lsblk -rpno NAME,RM,TYPE | awk '$2==1 && $3=="part" {print; exit}')"
+
+  if [[ -z "$DEV" ]]; then
+    err "No removable USB partition found"
+    return 1
+  fi
+
+  usb-mount "$DEV"
+}
+
+# ==================================================
 # Permissions & Ownership
 # ==================================================
 
 ## Show numeric permissions of a file
 perm() {
   [[ -z "$1" ]] && {
-    log "Usage: perm <file>"
+    err "Usage: perm <file>"
     return 1
   }
 
