@@ -14,12 +14,12 @@ cpuinfo() {
   grep -m1 "model name" /proc/cpuinfo
 }
 
-## Show memory usage (human-readable)
+## Show memory usage
 meminfo() {
   free -h
 }
 
-## Show disk usage (human-readable)
+## Show disk usage
 dfh() {
   df -h
 }
@@ -113,7 +113,7 @@ osinfo() {
 # System Management
 # ==================================================
 
-## Update system packages (distro-aware)
+## Update system packages
 sysupdate() {
   [[ ! -f /etc/os-release ]] && {
     err "Cannot detect distro (missing /etc/os-release)"

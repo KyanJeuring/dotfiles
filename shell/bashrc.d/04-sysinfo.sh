@@ -1,5 +1,5 @@
 # ==================================================
-# System information (cross-platform)
+# System information
 # ==================================================
 
 ## Display system information

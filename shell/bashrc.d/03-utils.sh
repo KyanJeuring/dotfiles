@@ -113,6 +113,165 @@ dotupdate() {
 # Network utilities
 # ==================================================
 
+## Show network interfaces
+netifaces() {
+  info "Network interfaces"
+  log
+
+  printf "  %-10s %-8s %-10s\n" "Interface" "State" "Type"
+  printf "  %-10s %-8s %-10s\n" "---------" "-----" "----"
+
+  ip -o link show | awk -F': ' '{print $2}' | while read -r iface; do
+    state="$(cat /sys/class/net/$iface/operstate 2>/dev/null)"
+    if iw dev "$iface" info >/dev/null 2>&1; then
+      type="Wi-Fi"
+    elif [[ "$iface" =~ ^e ]]; then
+      type="Ethernet"
+    else
+      type="Other"
+    fi
+    printf "  %-10s %-8s %-10s\n" "$iface" "$state" "$type"
+  done
+
+  log
+}
+
+### Get default Wi-Fi interface name
+_wifi_iface() {
+  iw dev 2>/dev/null | awk '$1=="Interface"{print $2; exit}'
+}
+
+### Get default Ethernet interface name
+_eth_iface() {
+  ip -o link show | awk -F': ' '$2 ~ /^e/ {print $2; exit}'
+}
+
+## Show Wi-Fi status
+netwifi() {
+  local iface="$(_wifi_iface)"
+  [[ -z "$iface" ]] && { warn "No Wi-Fi interface found"; return 1; }
+
+  info "Wi-Fi status ($iface)"
+  log
+  iw dev "$iface" link || warn "Not connected"
+  log
+}
+
+## Scan for available Wi-Fi networks
+netwifiscan() {
+  local iface="$(_wifi_iface)"
+  [[ -z "$iface" ]] && { err "No Wi-Fi interface found"; return 1; }
+
+  info "Scanning Wi-Fi networks ($iface)"
+  warn "Active scan"
+  log
+
+  sudo iw dev "$iface" scan |
+    awk -F: '
+      /SSID/   {ssid=$2}
+      /signal/ {printf "  %-30s %s\n", ssid, $2}
+    '
+
+  log
+}
+
+## Connect to Wi-Fi network
+netwificonnect() {
+  local iface ssid pass
+  iface="$(_wifi_iface)"
+  ssid="${1:-}"
+  pass="${2:-}"
+
+  [[ -z "$iface" ]] && { err "No Wi-Fi interface found"; return 1; }
+  [[ -z "$ssid"  ]] && { err "Usage: netwificonnect <SSID> [password]"; return 1; }
+
+  info "Resetting Wi-Fi state ($iface)"
+  log
+
+  # Hard reset (safe & idempotent)
+  sudo killall wpa_supplicant 2>/dev/null || true
+  sudo dhclient -r "$iface" 2>/dev/null || true
+  sudo ip addr flush dev "$iface"
+  sudo ip link set "$iface" down
+  sleep 1
+  sudo ip link set "$iface" up
+
+  info "Connecting to Wi-Fi"
+  info "SSID: $ssid"
+  log
+
+  if [[ -n "$pass" ]]; then
+    wpa_passphrase "$ssid" "$pass" |
+      sudo tee /etc/wpa_supplicant/wpa_supplicant.conf >/dev/null
+  fi
+
+  sudo wpa_supplicant -B -i "$iface" -c /etc/wpa_supplicant/wpa_supplicant.conf
+  sudo dhclient "$iface"
+
+  ok "Wi-Fi connected"
+  log
+}
+
+## Disconnect from Wi-Fi network
+netwifidisconnect() {
+  local iface="$(_wifi_iface)"
+  [[ -z "$iface" ]] && { err "No Wi-Fi interface found"; return 1; }
+
+  info "Disconnecting Wi-Fi ($iface)"
+  log
+
+  sudo killall wpa_supplicant 2>/dev/null || true
+  sudo dhclient -r "$iface" 2>/dev/null || true
+  sudo ip addr flush dev "$iface"
+  sudo ip link set "$iface" down
+
+  ok "Wi-Fi disconnected"
+  log
+}
+
+
+## Show Ethernet status
+neteth() {
+  local iface="$(_eth_iface)"
+  [[ -z "$iface" ]] && { warn "No Ethernet interface found"; return 1; }
+
+  info "Ethernet status ($iface)"
+  log
+
+  ip -4 addr show "$iface" | awk '/inet /{print "  IP:", $2}'
+  log
+}
+
+## Bring Ethernet interface up
+netethup() {
+  local iface="$(_eth_iface)"
+  [[ -z "$iface" ]] && { err "No Ethernet interface found"; return 1; }
+
+  info "Bringing Ethernet up ($iface)"
+  log
+
+  sudo ip link set "$iface" up
+  sudo dhclient "$iface"
+
+  ok "Ethernet up"
+  log
+}
+
+## Bring Ethernet interface down
+netethdown() {
+  local iface="$(_eth_iface)"
+  [[ -z "$iface" ]] && { err "No Ethernet interface found"; return 1; }
+
+  info "Bringing Ethernet down ($iface)"
+  log
+
+  sudo dhclient -r "$iface" 2>/dev/null || true
+  sudo ip link set "$iface" down
+
+  ok "Ethernet down"
+  log
+}
+
 ## Check internet connectivity
 netcheck() {
   curl -fsS https://1.1.1.1 >/dev/null && echo "Online" || echo "Offline"
