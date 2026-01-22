@@ -36,6 +36,10 @@ DEPRECATED_FUNCTIONS=(
   root
   getjson
   netdevices
+  usb-list
+  usb-mount
   usb-umount
+  usb-unmount
+  usb-eject
   usb-auto
 )
