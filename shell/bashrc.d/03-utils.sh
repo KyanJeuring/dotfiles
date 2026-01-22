@@ -1041,24 +1041,24 @@ lanportscan() {
   log
 }
 
-## Interactive network stress test using nping
+## Network stress test using nping
 netstress() {
-  local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA
+  local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA OUTPUT
+  local SENT RCVD LOST LOSS_PCT UNREACHABLE RST
+
+  info "Network stress test"
+  log
 
   read -rp "Target IP/host: " TARGET
-  [[ -z "$TARGET" ]] && { 
-    err "Usage: netstress <target>";
-    return 1; 
-  }
+  [[ -z "$TARGET" ]] && { err "No target specified"; return 1; }
 
   read -rp "Target port (leave empty for ICMP): " PORT
 
   if [[ -z "$PORT" ]]; then
-    PROTO="icmp"
-    info "No port specified → using ICMP (always reachable)"
+    PROTO="ICMP"
   else
     info "Protocol for port $PORT:"
-    select PROTO in udp tcp; do
+    select PROTO in UDP TCP; do
       [[ -n "$PROTO" ]] && break
     done
   fi
@@ -1073,38 +1073,61 @@ netstress() {
   DURATION="${DURATION:-30}"
 
   log
-  info "Target   : $TARGET"
-  info "Protocol : $PROTO"
-  [[ -n "$PORT" ]] && info "Port     : $PORT"
-  info "Rate     : $RATE pps"
-  info "Size     : $SIZE bytes"
-  info "Duration : $DURATION s"
+  info "Target        : $TARGET"
+  info "Protocol      : $PROTO"
+  [[ -n "$PORT" ]] && info "Port          : $PORT"
+  info "Packet rate   : $RATE pps"
+  info "Packet size   : $SIZE bytes"
+  info "Duration      : $DURATION s"
   log
 
   read -rp "Start test? [y/N]: " CONFIRM
-  [[ "$CONFIRM" != "y"  && "$CONFIRM" != "Y" ]] && { err "Aborted."; return 0; }
+  [[ ! "$CONFIRM" =~ ^[yY]$ ]] && { warn "Aborted."; return 0; }
 
   case "$PROTO" in
-    icmp)
-      FLAGS="--icmp"
-      ;;
-    udp)
-      FLAGS="--udp -p $PORT"
-      ;;
-    tcp)
-      FLAGS="--tcp -p $PORT --flags syn"
-      ;;
+    ICMP) FLAGS="--icmp" ;;
+    UDP)  FLAGS="--udp -p $PORT" ;;
+    TCP)  FLAGS="--tcp -p $PORT --flags syn" ;;
   esac
 
   EXTRA="--rate $RATE --data-length $SIZE"
 
-  info "Running nping (Ctrl+C to stop)"
+  info "Running stress test..."
   log
 
-  if [[ "$DURATION" -gt 0 ]]; then
-    sudo timeout "$DURATION" nping $FLAGS $EXTRA "$TARGET"
+  OUTPUT="$(
+    if [[ "$DURATION" -gt 0 ]]; then
+      sudo timeout "$DURATION" \
+        nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1
+    else
+      sudo nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1
+    fi
+  )"
+
+  SENT="$(grep -oP 'Raw packets sent:\s*\K[0-9]+' <<<"$OUTPUT")"
+  RCVD="$(grep -oP 'Rcvd:\s*\K[0-9]+' <<<"$OUTPUT")"
+  LOST="$(grep -oP 'Lost:\s*\K[0-9]+' <<<"$OUTPUT")"
+  LOSS_PCT="$(grep -oP 'Lost:.*\(\K[0-9.]+(?=%)' <<<"$OUTPUT")"
+
+  UNREACHABLE="$(grep -i 'unreachable|admin prohibited' <<<"$OUTPUT")"
+  RST="$(grep -i 'rst' <<<"$OUTPUT")"
+
+  info "Results"
+  log
+
+  [[ -n "$SENT" ]] && info "Packets sent     : $SENT"
+  [[ -n "$RCVD" ]] && info "Packets received : $RCVD"
+  [[ -n "$LOST" ]] && info "Packets lost     : $LOST (${LOSS_PCT:-0}%)"
+  log
+
+  if [[ -z "$RCVD" || "$RCVD" -eq 0 ]]; then
+    ok "Target stopped responding (overload or crash detected)"
+  elif [[ -n "$LOSS_PCT" && $(echo "$LOSS_PCT > 10" | bc -l) -eq 1 ]]; then
+    ok "High packet loss detected → target under stress"
+  elif [[ -n "$UNREACHABLE" || -n "$RST" ]]; then
+    warn "Target is refusing packets (filtering / firewall / rate-limit)"
   else
-    sudo nping $FLAGS $EXTRA "$TARGET"
+    warn "Target handled load without failure"
   fi
 }
 
