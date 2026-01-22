@@ -845,6 +845,28 @@ dnscheck() {
   ( curl -sI "https://$1" || curl -sI "http://$1" ) | head -n 1
 }
 
+### Check if an IPv4 address is public
+is_public_ipv4() {
+  local ip="$1"
+
+  [[ -n "$ip" ]] || return 1
+  [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+
+  IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+
+  for o in "$o1" "$o2" "$o3" "$o4"; do
+    ((o >= 0 && o <= 255)) || return 1
+  done
+
+  ((o1 == 127)) && return 1
+  ((o1 == 10)) && return 1
+  ((o1 == 192 && o2 == 168)) && return 1
+  ((o1 == 172 && o2 >= 16 && o2 <= 31)) && return 1
+  ((o1 == 169 && o2 == 254)) && return 1
+
+  return 0
+}
+
 ## Scan open TCP ports on a public IPv4 address (default: self)
 portscan() {
   info "Starting port scan utility"
@@ -937,7 +959,7 @@ portscan() {
 }
 
 ## Scan open TCP ports on a LAN (private IPv4 only)
-lanscan() {
+lanportscan() {
   info "Starting LAN port scan utility"
   log
 
@@ -949,13 +971,14 @@ lanscan() {
   local TARGET_IP="${1:-}"
 
   if [[ -z "$TARGET_IP" ]]; then
-    err "Usage: lanscan <private-ip>"
+    err "Usage: lanportscan <lan-ip>"
     return 1
   fi
 
-  if ! is_private_ipv4 "$TARGET_IP"; then
+  # Explicitly reject public IPv4 addresses
+  if is_public_ipv4 "$TARGET_IP"; then
     err "Invalid target IP: $TARGET_IP"
-    err "Only private LAN addresses are allowed"
+    err "Public IPv4 addresses are not allowed for LAN scans"
     return 1
   fi
 
@@ -1004,7 +1027,7 @@ lanscan() {
     3)
       info "Running FULL TCP scan on $TARGET_IP"
       warn "This will scan all 65535 TCP ports"
-      warn "Expect noise and longer runtime"
+      warn "Expect more noise and longer runtime"
       log
       $NMAP_CMD -p- "$TARGET_IP"
       ;;
@@ -1014,7 +1037,7 @@ lanscan() {
       ;;
   esac
 
-  ok "LAN scan completed"
+  ok "LAN port scan completed"
   log
 }
 

@@ -45,4 +45,5 @@ DEPRECATED_FUNCTIONS=(
   dlogs_last
   dlog_last
   dstack_purge
+  lanscan
 )
