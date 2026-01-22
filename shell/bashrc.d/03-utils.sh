@@ -1148,6 +1148,63 @@ netstress() {
   fi
 }
 
+## Aggressively stress a LAN IPv4 device
+lanoverload() {
+  local TARGET RATE SIZE DURATION COUNT
+  local START_TS END_TS
+
+  info "LAN overload test"
+  warn "When run against the router or broadcast IP, this may degrade the entire LAN!"
+  log
+
+  read -rp "Target IP/host (router or broadcast IP): " TARGET
+  [[ -z "$TARGET" ]] && { err "No target specified"; return 1; }
+
+  read -rp "Packet rate (pps) [20000]: " RATE
+  RATE="${RATE:-20000}"
+
+  read -rp "Packet size (bytes) [1472]: " SIZE
+  SIZE="${SIZE:-1472}"
+  (( SIZE > 1472 )) && SIZE=1472
+
+  read -rp "Duration in seconds [10]: " DURATION
+  DURATION="${DURATION:-10}"
+
+  read -rp "Packets per burst [1000]: " COUNT
+  COUNT="${COUNT:-1000}"
+
+  log
+  warn "This WILL degrade the LAN"
+  warn "Target   : $TARGET"
+  warn "Rate     : $RATE pps"
+  warn "Size     : $SIZE bytes"
+  warn "Duration : $DURATION s"
+  log
+
+  read -rp "Proceed? [y/N]: " CONFIRM
+  [[ ! "$CONFIRM" =~ ^[yY]$ ]] && { warn "Aborted."; return 0; }
+
+  info "Overloading LAN..."
+  log
+
+  START_TS="$(date +%s)"
+  END_TS=$(( START_TS + DURATION ))
+
+  while [[ "$(date +%s)" -lt "$END_TS" ]]; do
+    sudo nping \
+      --udp \
+      -p 50000 \
+      --rate "$RATE" \
+      --data-length "$SIZE" \
+      --count "$COUNT" \
+      "$TARGET" \
+      >/dev/null 2>&1
+  done
+
+  log
+  ok "LAN overload test completed"
+}
+
 # ==================================================
 # Curl utilities
 # ==================================================
