@@ -1072,7 +1072,6 @@ netstress() {
 
   read -rp "Packet size (bytes) [1200]: " SIZE
   SIZE="${SIZE:-1200}"
-
   (( SIZE > 1472 )) && SIZE=1472
 
   read -rp "Duration in seconds (0 = unlimited) [30]: " DURATION
@@ -1105,7 +1104,10 @@ netstress() {
   END_TS=$(( DURATION > 0 ? START_TS + DURATION : 0 ))
 
   while :; do
-    OUT="$(sudo nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1)"
+    OUT="$(
+      sudo nping $FLAGS $EXTRA "$TARGET" 2>&1 |
+      grep -vE '^(SENT|RCVD)'
+    )"
 
     s="$(grep -oP 'Raw packets sent:\s*\K[0-9]+' <<<"$OUT")"
     r="$(grep -oP 'Rcvd:\s*\K[0-9]+' <<<"$OUT")"
