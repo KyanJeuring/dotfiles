@@ -87,7 +87,7 @@ drebootstack() {
 }
 
 ## Remove the current docker compose stack and prune unused Docker resources system-wide
-dstack_purge() {
+dstackpurge() {
   warn "This will remove the CURRENT compose stack and prune UNUSED Docker resources system-wide"
   warn "Images and volumes still in use will NOT be removed"
   confirm "Continue?" || return 1
@@ -116,15 +116,15 @@ dlog() {
 }
 
 ## Show last logs for all services (paged)
-dlogs_last() {
+dllogs() {
   local lines="${1:-100}"
   docker compose logs --tail="$lines" | less
 }
 
 ## Show last logs for a single service (paged)
-dlog_last() {
+dllog() {
   if [ -z "$1" ]; then
-    err "Usage: dlog_last <service-name> [lines]"
+    err "Usage: dllog <service-name> [lines]"
     return 1
   fi
   local lines="${2:-100}"

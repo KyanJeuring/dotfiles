@@ -389,7 +389,7 @@ EOF
 }
 
 ### netscan for Windows systems (Git Bash)
-netscan_windows() {
+_netscan_windows() {
   info "Scanning local network for devices"
   log
   info "Environment : Windows (Git Bash)"
@@ -697,7 +697,7 @@ netscan() {
   }
 
   if is_gitbash; then
-    netscan_windows
+    _netscan_windows
   else
     _netscan_linux
   fi

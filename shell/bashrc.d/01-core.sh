@@ -42,4 +42,7 @@ DEPRECATED_FUNCTIONS=(
   usb-unmount
   usb-eject
   usb-auto
+  dlogs_last
+  dlog_last
+  dstack_purge
 )
