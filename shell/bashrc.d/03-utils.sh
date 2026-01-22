@@ -1052,22 +1052,25 @@ netstress() {
   read -rp "Target IP/host: " TARGET
   [[ -z "$TARGET" ]] && { err "No target specified"; return 1; }
 
-  read -rp "Target port (leave empty for ICMP): " PORT
+  read -rp "Target port (empty = default device stress): " PORT
 
   if [[ -z "$PORT" ]]; then
-    PROTO="ICMP"
+    PROTO="UDP"
+    PORT=50000
+    info "No port specified → defaulting to UDP device stress (port $PORT)"
   else
     info "Protocol for port $PORT:"
-    select PROTO in UDP TCP; do
+    select PROTO in UDP TCP ICMP; do
       [[ -n "$PROTO" ]] && break
     done
+    [[ "$PROTO" == "ICMP" ]] && PORT=""
   fi
 
   read -rp "Packet rate (pps) [5000]: " RATE
   RATE="${RATE:-5000}"
 
-  read -rp "Packet size (bytes) [1000]: " SIZE
-  SIZE="${SIZE:-1000}"
+  read -rp "Packet size (bytes) [1200]: " SIZE
+  SIZE="${SIZE:-1200}"
 
   read -rp "Duration in seconds (0 = unlimited) [30]: " DURATION
   DURATION="${DURATION:-30}"
@@ -1120,12 +1123,18 @@ netstress() {
   [[ -n "$LOST" ]] && info "Packets lost     : $LOST (${LOSS_PCT:-0}%)"
   log
 
-  if [[ -z "$RCVD" || "$RCVD" -eq 0 ]]; then
+  if [[ "$PROTO" == "ICMP" && ( -z "$RCVD" || "$RCVD" -eq 0 ) ]]; then
+    warn "ICMP replies stopped (likely rate-limited, target may still be alive)"
+
+  elif [[ -z "$RCVD" || "$RCVD" -eq 0 ]]; then
     ok "Target stopped responding (overload or crash detected)"
+
   elif [[ -n "$LOSS_PCT" && $(echo "$LOSS_PCT > 10" | bc -l) -eq 1 ]]; then
     ok "High packet loss detected → target under stress"
+
   elif [[ -n "$UNREACHABLE" || -n "$RST" ]]; then
     warn "Target is refusing packets (filtering / firewall / rate-limit)"
+
   else
     warn "Target handled load without failure"
   fi
