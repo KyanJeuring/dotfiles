@@ -936,6 +936,88 @@ portscan() {
   log
 }
 
+## Scan open TCP ports on a LAN (private IPv4 only)
+lanscan() {
+  info "Starting LAN port scan utility"
+  log
+
+  if ! command -v nmap >/dev/null 2>&1; then
+    err "nmap is not installed"
+    return 1
+  fi
+
+  local TARGET_IP="${1:-}"
+
+  if [[ -z "$TARGET_IP" ]]; then
+    err "Usage: lanscan <private-ip>"
+    return 1
+  fi
+
+  if ! is_private_ipv4 "$TARGET_IP"; then
+    err "Invalid target IP: $TARGET_IP"
+    err "Only private LAN addresses are allowed"
+    return 1
+  fi
+
+  info "Target LAN device:"
+  ipinfo "$TARGET_IP" 2>/dev/null || true
+  log
+
+  info "Select scan type:"
+  info "  1) Quick scan (top 1000 TCP ports)  [default]"
+  info "  2) Targeted scan (specific ports)"
+  info "  3) Full scan (all 65535 TCP ports)"
+  log
+
+  local CHOICE
+  read -rp "Enter choice [1-3] (default: 1): " CHOICE
+  CHOICE="${CHOICE:-1}"
+  log
+
+  local NMAP_CMD="nmap"
+  if command -v sudo >/dev/null 2>&1; then
+    NMAP_CMD="sudo nmap"
+  fi
+
+  case "$CHOICE" in
+    1)
+      info "Running QUICK TCP scan on $TARGET_IP"
+      info "Scanning top 1000 commonly used ports"
+      log
+      $NMAP_CMD "$TARGET_IP"
+      ;;
+    2)
+      local PORTS
+      read -rp "Enter ports (e.g. 22,80,443,8080): " PORTS
+
+      if [[ -z "${PORTS// }" ]]; then
+        err "No ports specified"
+        return 1
+      fi
+
+      log
+      info "Running TARGETED TCP scan on $TARGET_IP"
+      info "Ports: $PORTS"
+      log
+      $NMAP_CMD -p "$PORTS" "$TARGET_IP"
+      ;;
+    3)
+      info "Running FULL TCP scan on $TARGET_IP"
+      warn "This will scan all 65535 TCP ports"
+      warn "Expect noise and longer runtime"
+      log
+      $NMAP_CMD -p- "$TARGET_IP"
+      ;;
+    *)
+      err "Invalid option"
+      return 1
+      ;;
+  esac
+
+  ok "LAN scan completed"
+  log
+}
+
 # ==================================================
 # Curl utilities
 # ==================================================
