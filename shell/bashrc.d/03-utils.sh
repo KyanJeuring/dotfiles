@@ -1041,6 +1041,73 @@ lanportscan() {
   log
 }
 
+## Interactive network stress test using nping
+netstress() {
+  local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA
+
+  read -rp "Target IP/host: " TARGET
+  [[ -z "$TARGET" ]] && { 
+    err "Usage: netstress <target>";
+    return 1; 
+  }
+
+  read -rp "Target port (leave empty for ICMP): " PORT
+
+  if [[ -z "$PORT" ]]; then
+    PROTO="icmp"
+    info "No port specified → using ICMP (always reachable)"
+  else
+    info "Protocol for port $PORT:"
+    select PROTO in udp tcp; do
+      [[ -n "$PROTO" ]] && break
+    done
+  fi
+
+  read -rp "Packet rate (pps) [5000]: " RATE
+  RATE="${RATE:-5000}"
+
+  read -rp "Packet size (bytes) [1000]: " SIZE
+  SIZE="${SIZE:-1000}"
+
+  read -rp "Duration in seconds (0 = unlimited) [30]: " DURATION
+  DURATION="${DURATION:-30}"
+
+  log
+  info "Target   : $TARGET"
+  info "Protocol : $PROTO"
+  [[ -n "$PORT" ]] && info "Port     : $PORT"
+  info "Rate     : $RATE pps"
+  info "Size     : $SIZE bytes"
+  info "Duration : $DURATION s"
+  log
+
+  read -rp "Start test? (y/N): " CONFIRM
+  [[ "$CONFIRM" != "y"  && "$CONFIRM" != "Y" ]] && { err "Aborted."; return 0; }
+
+  case "$PROTO" in
+    icmp)
+      FLAGS="--icmp"
+      ;;
+    udp)
+      FLAGS="--udp -p $PORT"
+      ;;
+    tcp)
+      FLAGS="--tcp -p $PORT --flags syn"
+      ;;
+  esac
+
+  EXTRA="--rate $RATE --data-length $SIZE"
+
+  info "Running nping (Ctrl+C to stop)"
+  log
+
+  if [[ "$DURATION" -gt 0 ]]; then
+    sudo timeout "$DURATION" nping $FLAGS $EXTRA "$TARGET"
+  else
+    sudo nping $FLAGS $EXTRA "$TARGET"
+  fi
+}
+
 # ==================================================
 # Curl utilities
 # ==================================================
