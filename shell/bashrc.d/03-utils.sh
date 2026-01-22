@@ -1046,6 +1046,7 @@ netstress() {
   local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA
   local START_TS END_TS ELAPSED
   local SENT=0 RCVD=0 LOST=0 LOSS_PCT
+  local COUNT=500
 
   info "Network stress test"
   log
@@ -1072,7 +1073,7 @@ netstress() {
 
   read -rp "Packet size (bytes) [1200]: " SIZE
   SIZE="${SIZE:-1200}"
-  (( SIZE > 1472 )) && SIZE=1472
+  (( SIZE > 1472 )) && SIZE=1472 
 
   read -rp "Duration in seconds (0 = unlimited) [30]: " DURATION
   DURATION="${DURATION:-30}"
@@ -1095,7 +1096,7 @@ netstress() {
     TCP)  FLAGS="--tcp -p $PORT --flags syn" ;;
   esac
 
-  EXTRA="--rate $RATE --data-length $SIZE"
+  EXTRA="--rate $RATE --data-length $SIZE --count $COUNT"
 
   info "Running stress test..."
   log
@@ -1118,7 +1119,7 @@ netstress() {
     (( LOST += l ))
 
     [[ "$DURATION" -gt 0 && "$(date +%s)" -ge "$END_TS" ]] && break
-    sleep 0.2
+    sleep 0.1
   done
 
   ELAPSED="$(( $(date +%s) - START_TS ))"
