@@ -1045,6 +1045,7 @@ lanportscan() {
 netstress() {
   local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA OUTPUT
   local SENT RCVD LOST LOSS_PCT UNREACHABLE RST
+  local START_TS END_TS ELAPSED
 
   info "Network stress test"
   log
@@ -1098,6 +1099,8 @@ netstress() {
   info "Running stress test..."
   log
 
+  START_TS="$(date +%s)"
+
   OUTPUT="$(
     if [[ "$DURATION" -gt 0 ]]; then
       sudo timeout "$DURATION" \
@@ -1106,6 +1109,9 @@ netstress() {
       sudo nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1
     fi
   )"
+
+  END_TS="$(date +%s)"
+  ELAPSED="$((END_TS - START_TS))"
 
   SENT="$(grep -oP 'Raw packets sent:\s*\K[0-9]+' <<<"$OUTPUT")"
   RCVD="$(grep -oP 'Rcvd:\s*\K[0-9]+' <<<"$OUTPUT")"
@@ -1121,19 +1127,23 @@ netstress() {
   [[ -n "$SENT" ]] && info "Packets sent     : $SENT"
   [[ -n "$RCVD" ]] && info "Packets received : $RCVD"
   [[ -n "$LOST" ]] && info "Packets lost     : $LOST (${LOSS_PCT:-0}%)"
+  info "Elapsed time     : ${ELAPSED}s"
   log
 
   if [[ "$PROTO" == "ICMP" && ( -z "$RCVD" || "$RCVD" -eq 0 ) ]]; then
-    warn "ICMP replies stopped (likely rate-limited, target may still be alive)"
+    warn "ICMP replies stopped (likely rate-limited)"
 
-  elif [[ -z "$RCVD" || "$RCVD" -eq 0 ]]; then
-    ok "Target stopped responding (overload or crash detected)"
+  elif [[ ( -z "$RCVD" || "$RCVD" -eq 0 ) && "$ELAPSED" -ge $((DURATION - 2)) ]]; then
+    ok "Target stopped responding under sustained load"
+
+  elif [[ ( -z "$RCVD" || "$RCVD" -eq 0 ) && "$ELAPSED" -lt 3 ]]; then
+    warn "Packets dropped immediately (likely firewall or filtering)"
 
   elif [[ -n "$LOSS_PCT" && $(echo "$LOSS_PCT > 10" | bc -l) -eq 1 ]]; then
-    ok "High packet loss detected → target under stress"
+    ok "High packet loss detected -> target under stress"
 
   elif [[ -n "$UNREACHABLE" || -n "$RST" ]]; then
-    warn "Target is refusing packets (filtering / firewall / rate-limit)"
+    warn "Target is actively refusing packets"
 
   else
     warn "Target handled load without failure"
