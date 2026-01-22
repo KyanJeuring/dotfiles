@@ -24,6 +24,6 @@ warn() { log "$WARN $*"; }
 err()  { log "$ERR $*"; }
 
 confirm() {
-  read -rp "$1 (y/N): " ans
+  read -rp "$1 [y/N]: " ans
   [[ "$ans" =~ ^[Yy]$ ]]
 }

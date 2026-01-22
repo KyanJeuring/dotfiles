@@ -1081,7 +1081,7 @@ netstress() {
   info "Duration : $DURATION s"
   log
 
-  read -rp "Start test? (y/N): " CONFIRM
+  read -rp "Start test? [y/N]: " CONFIRM
   [[ "$CONFIRM" != "y"  && "$CONFIRM" != "Y" ]] && { err "Aborted."; return 0; }
 
   case "$PROTO" in
