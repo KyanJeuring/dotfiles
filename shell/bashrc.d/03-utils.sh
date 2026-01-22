@@ -1043,9 +1043,9 @@ lanportscan() {
 
 ## Network stress test using nping
 netstress() {
-  local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA OUTPUT
-  local SENT RCVD LOST LOSS_PCT UNREACHABLE RST
+  local TARGET PROTO RATE SIZE PORT DURATION FLAGS EXTRA
   local START_TS END_TS ELAPSED
+  local SENT=0 RCVD=0 LOST=0 LOSS_PCT
 
   info "Network stress test"
   log
@@ -1072,6 +1072,8 @@ netstress() {
 
   read -rp "Packet size (bytes) [1200]: " SIZE
   SIZE="${SIZE:-1200}"
+
+  (( SIZE > 1472 )) && SIZE=1472
 
   read -rp "Duration in seconds (0 = unlimited) [30]: " DURATION
   DURATION="${DURATION:-30}"
@@ -1100,50 +1102,43 @@ netstress() {
   log
 
   START_TS="$(date +%s)"
+  END_TS=$(( DURATION > 0 ? START_TS + DURATION : 0 ))
 
-  OUTPUT="$(
-    if [[ "$DURATION" -gt 0 ]]; then
-      sudo timeout "$DURATION" \
-        nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1
-    else
-      sudo nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1
-    fi
-  )"
+  while :; do
+    OUT="$(sudo nping $FLAGS $EXTRA "$TARGET" --quiet 2>&1)"
 
-  END_TS="$(date +%s)"
-  ELAPSED="$((END_TS - START_TS))"
+    s="$(grep -oP 'Raw packets sent:\s*\K[0-9]+' <<<"$OUT")"
+    r="$(grep -oP 'Rcvd:\s*\K[0-9]+' <<<"$OUT")"
+    l="$(grep -oP 'Lost:\s*\K[0-9]+' <<<"$OUT")"
 
-  SENT="$(grep -oP 'Raw packets sent:\s*\K[0-9]+' <<<"$OUTPUT")"
-  RCVD="$(grep -oP 'Rcvd:\s*\K[0-9]+' <<<"$OUTPUT")"
-  LOST="$(grep -oP 'Lost:\s*\K[0-9]+' <<<"$OUTPUT")"
-  LOSS_PCT="$(grep -oP 'Lost:.*\(\K[0-9.]+(?=%)' <<<"$OUTPUT")"
+    (( SENT += s ))
+    (( RCVD += r ))
+    (( LOST += l ))
 
-  UNREACHABLE="$(grep -i 'unreachable|admin prohibited' <<<"$OUTPUT")"
-  RST="$(grep -i 'rst' <<<"$OUTPUT")"
+    [[ "$DURATION" -gt 0 && "$(date +%s)" -ge "$END_TS" ]] && break
+    sleep 0.2
+  done
+
+  ELAPSED="$(( $(date +%s) - START_TS ))"
+  LOSS_PCT=$(( SENT > 0 ? (100 * LOST / SENT) : 0 ))
 
   info "Results"
   log
 
-  [[ -n "$SENT" ]] && info "Packets sent     : $SENT"
-  [[ -n "$RCVD" ]] && info "Packets received : $RCVD"
-  [[ -n "$LOST" ]] && info "Packets lost     : $LOST (${LOSS_PCT:-0}%)"
+  info "Packets sent     : $SENT"
+  info "Packets received : $RCVD"
+  info "Packets lost     : $LOST (${LOSS_PCT}%)"
   info "Elapsed time     : ${ELAPSED}s"
   log
 
-  if [[ "$PROTO" == "ICMP" && ( -z "$RCVD" || "$RCVD" -eq 0 ) ]]; then
+  if [[ "$PROTO" == "ICMP" && "$RCVD" -eq 0 ]]; then
     warn "ICMP replies stopped (likely rate-limited)"
 
-  elif [[ ( -z "$RCVD" || "$RCVD" -eq 0 ) && "$ELAPSED" -ge $((DURATION - 2)) ]]; then
+  elif [[ "$RCVD" -eq 0 && "$ELAPSED" -ge 5 ]]; then
     ok "Target stopped responding under sustained load"
 
-  elif [[ ( -z "$RCVD" || "$RCVD" -eq 0 ) && "$ELAPSED" -lt 3 ]]; then
-    warn "Packets dropped immediately (likely firewall or filtering)"
-
-  elif [[ -n "$LOSS_PCT" && $(echo "$LOSS_PCT > 10" | bc -l) -eq 1 ]]; then
-    ok "High packet loss detected -> target under stress"
-
-  elif [[ -n "$UNREACHABLE" || -n "$RST" ]]; then
-    warn "Target is actively refusing packets"
+  elif [[ "$LOSS_PCT" -gt 10 ]]; then
+    ok "High packet loss detected → target under stress"
 
   else
     warn "Target handled load without failure"
