@@ -306,51 +306,23 @@ netneighbors() {
 ### Edit netscan alias file for current subnet
 _netscan_edit_aliases() {
   local IFACE NET_ID GW_IP GW_MAC NET_ID_FILE ALIAS_FILE EDITOR_CMD
-  local OS NET_DESC
 
   mkdir -p "$HOME/.config/netaliases"
 
-  case "$OSTYPE" in
-    msys*|cygwin*) OS="windows" ;;
-    *)             OS="linux" ;;
-  esac
+  IFACE="$(ip route | awk '/default/ {print $5; exit}')"
+  [[ -z "$IFACE" ]] && { err "Could not determine interface"; return 1; }
 
-  if [[ "$OS" == "linux" ]]; then
-    IFACE="$(ip route | awk '/default/ {print $5; exit}')"
-    [[ -z "$IFACE" ]] && { err "Could not determine active interface"; return 1; }
+  NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
+  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
+  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
 
-    NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
-    [[ -z "$NET_ID" ]] && { err "Could not determine subnet"; return 1; }
-
-    GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
-    GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
-
-    NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
-    NET_DESC="Interface: $IFACE | Subnet: $NET_ID | Gateway: $GW_IP ($GW_MAC)"
-  else
-    NET_ID="$(powershell.exe -NoProfile -Command '
-      $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
-           Sort-Object RouteMetric,InterfaceMetric |
-           Select-Object -First 1
-      (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-       Where-Object { $_.IPAddress -notlike "169.254*" })[0].IPAddress +
-      "/" +
-      (Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 |
-       Where-Object { $_.IPAddress -notlike "169.254*" })[0].PrefixLength
-    ' | tr -d "\r")"
-
-    [[ -z "$NET_ID" ]] && { err "Could not determine subnet (Windows)"; return 1; }
-
-    NET_ID_FILE="${NET_ID//\//_}"
-    NET_DESC="Subnet: $NET_ID (Windows)"
-  fi
-
+  NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
   ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
 
   if [[ ! -f "$ALIAS_FILE" ]]; then
     cat >"$ALIAS_FILE" <<EOF
 # netscan aliases
-# $NET_DESC
+# Interface: $IFACE | Subnet: $NET_ID | Gateway: $GW_IP ($GW_MAC)
 #
 # Format:
 #   <ip> <hostname> [type]
@@ -358,20 +330,9 @@ _netscan_edit_aliases() {
 # Use '-' to keep detected hostname but override type.
 # Lines starting with '#' are ignored.
 EOF
-    ok "Created alias file:"
-    ok "  $ALIAS_FILE"
-  else
-    info "Editing alias file:"
-    info "  $ALIAS_FILE"
   fi
 
-  EDITOR_CMD="${EDITOR:-}"
-  [[ -z "$EDITOR_CMD" ]] && command -v nano >/dev/null && EDITOR_CMD="nano"
-  [[ -z "$EDITOR_CMD" ]] && command -v vi   >/dev/null && EDITOR_CMD="vi"
-
-  [[ -z "$EDITOR_CMD" ]] && { err "No editor found (set \$EDITOR)"; return 1; }
-
-  "$EDITOR_CMD" "$ALIAS_FILE"
+  "${EDITOR:-nano}" "$ALIAS_FILE"
 }
 
 ### netscan for Windows systems (Git Bash)
@@ -505,27 +466,12 @@ _netscan_linux() {
   info "Scanning local network for devices"
   log
 
-  command -v nmap >/dev/null 2>&1 || { err "nmap is not installed"; return 1; }
+  command -v nmap >/dev/null || { err "nmap not installed"; return 1; }
 
-  local IFACE SUBNET
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
-  [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
 
-  if [[ -t 1 ]]; then
-    HEADER="\033[1;34m"
-    RED="\033[1;31m"
-    RESET="\033[0m"
-  else
-    HEADER=""; RED=""; RESET=""
-  fi
-
-  info "Interface : $IFACE"
-  info "Subnet    : $SUBNET"
-  warn "Active scan (ARP/ICMP)"
-  log
-
-  printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
+  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
@@ -533,66 +479,53 @@ _netscan_linux() {
   ip neigh flush all >/dev/null 2>&1 || true
   ping -c 1 -b 255.255.255.255 >/dev/null 2>&1 || true
 
-  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
-  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
-  NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
-  NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
-
-  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
-  [[ -f "$ALIAS_FILE" ]] || ALIAS_FILE=""
-
-  sudo nmap -sn -PR "$SUBNET" 2>/dev/null |
-  awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$ALIAS_FILE" '
-
-    BEGIN {
-      if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
-        do {
-          if ($0 ~ /^#/ || NF < 2) continue
-          alias_host[$1] = $2
-          alias_type[$1] = (NF >= 3 ? $3 : "")
-        } while (getline < ALIAS_FILE)
-        close(ALIAS_FILE)
-      }
-    }
-
-    function classify(h, v) {
-      h = tolower(h); v = tolower(v)
+  sudo nmap -sn -PR "$SUBNET" |
+  awk '
+    function classify(h,v) {
+      h=tolower(h); v=tolower(v)
       if (h ~ /(proxmox|pve|lxc|kvm)/) return "Server"
       if (h ~ /(nas|storage)/) return "Storage"
-      if (h ~ /(print|printer|brother|epson|canon)/) return "Printer"
+      if (h ~ /(printer|brother|epson|canon)/) return "Printer"
       if (h ~ /(cam|camera|nvr)/) return "Camera"
       if (h ~ /(router|switch|firewall|ap)/) return "Network"
-      if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
-      if (h ~ /(laptop|desktop|pc|workstation|macbook)/) return "Computer"
+      if (h ~ /(tv|chromecast|roku)/) return "TV/Media"
       if (h ~ /(iphone|ipad|pixel)/) return "Phone"
-      if (h ~ /(galaxy|s[0-9][0-9][^a-z0-9]|note[0-9]?)/) return "Phone"
+      if (h ~ /(galaxy|s[0-9][0-9]|note[0-9]?)/) return "Phone"
       if (v ~ /(dahua)/) return "Camera"
-      if (v ~ /(synology|qnap|netapp|western digital)/) return "Storage"
-      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom)/) return "Network"
+      if (v ~ /(synology|qnap|netapp)/) return "Storage"
+      if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link|arcadyan|sagemcom)/) return "Network"
       return "Unknown"
     }
 
     function trunc(s,w){ return (length(s)>w)?substr(s,1,w-1)"…":s }
 
     /^Nmap scan report for/ {
-      host="[UNKNOWN]"; ip=$NF
-      if ($0 ~ /\(/) { match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
+      line=$0
+      sub(/^.*for /,"",line)
+      if (line ~ /\(/) {
+        ip=line
+        sub(/^.*\(/,"",ip)
+        sub(/\).*$/,"",ip)
+        sub(/\s*\(.*$/,"",line)
+        host=line
+      } else {
+        ip=line
+        host="[UNKNOWN]"
+      }
     }
 
     /MAC Address:/ {
-      mac=$3; vendor=$4
+      mac=$3
+      vendor=$4
       for(i=5;i<=NF;i++) vendor=vendor" "$i
-      if (ip in alias_host && alias_host[ip] != "-") host=alias_host[ip]
-      type = (ip in alias_type && alias_type[ip] != "") ? alias_type[ip] : classify(host,vendor)
-      hc=sprintf("%-32s",trunc(host,32))
-      vc=sprintf("%-36s",trunc(vendor,36))
-      if (host=="[UNKNOWN]" && RED!="") sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
-      printf "  | %-15s | %s | %-10s | %-17s | %s |\n", ip,hc,type,mac,vc
+      type=classify(host,vendor)
+      printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n", \
+        ip,trunc(host,32),type,mac,trunc(vendor,36)
     }
   ' | sort -V
 
   SELF_IP="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2}' | cut -d/ -f1)"
-  SELF_HOST="$(hostname)"
+  SELF_HOST="$(cat /proc/sys/kernel/hostname)"
   SELF_MAC="$(cat /sys/class/net/$IFACE/address)"
 
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
