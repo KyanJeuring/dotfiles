@@ -601,7 +601,7 @@ _netscan_linux() {
       if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
       if (h ~ /(laptop|desktop|pc|workstation|notebook|macbook)/) return "Computer"
       if (h ~ /(iphone|ipad|pixel)/) return "Phone"
-      if (h ~ /(galaxy|s[0-9]{2}[^a-z0-9]|note[0-9]?)/) return "Phone"
+      if (h ~ /(galaxy|s[0-9][0-9][^a-z0-9]|note[0-9]?)/) return "Phone"
       if (h ~ /(redmi|xiaomi|mi[0-9])/ ) return "Phone"
       if (h ~ /(oneplus|oppo|realme)/) return "Phone"
       if (h ~ /(huawei|honor)/) return "Phone"
@@ -613,7 +613,8 @@ _netscan_linux() {
       if (v ~ /dahua/) return "Camera"
       if (v ~ /(netapp|qnap|synology|asustor|western digital)/) return "Storage"
       if (v ~ /amazon/ && h ~ /(echo|alexa|kindle|fire)/) return "IoT"
-      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/) return "Network"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
+        return "Network"
       if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
       if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
 
