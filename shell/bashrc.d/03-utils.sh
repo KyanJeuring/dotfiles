@@ -471,7 +471,22 @@ _netscan_linux() {
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
 
-  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+  [[ -z "$IFACE" || -z "$SUBNET" ]] && { err "Could not determine network"; return 1; }
+
+  if [[ -t 1 ]]; then
+    HEADER="\033[1;34m"
+    RED="\033[1;31m"
+    RESET="\033[0m"
+  else
+    HEADER=""; RED=""; RESET=""
+  fi
+
+  info "Interface : $IFACE"
+  info "Subnet    : $SUBNET"
+  warn "Active scan (ARP/ICMP)"
+  log
+
+  printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
@@ -479,21 +494,38 @@ _netscan_linux() {
   ip neigh flush all >/dev/null 2>&1 || true
   ping -c 1 -b 255.255.255.255 >/dev/null 2>&1 || true
 
-  sudo nmap -sn -PR "$SUBNET" |
-  awk '
-    function classify(h,v) {
-      h=tolower(h); v=tolower(v)
+  sudo nmap -sn -PR "$SUBNET" 2>/dev/null |
+  awk -v RED="$RED" -v RESET="$RESET" '
+    function classify(host, vendor) {
+      h = tolower(host)
+      v = tolower(vendor)
+
+      # Hostname-based (primary)
       if (h ~ /(proxmox|pve|lxc|kvm)/) return "Server"
       if (h ~ /(nas|storage)/) return "Storage"
-      if (h ~ /(printer|brother|epson|canon)/) return "Printer"
+      if (h ~ /(print|printer|mfc|brother|epson|canon)/) return "Printer"
       if (h ~ /(cam|camera|nvr)/) return "Camera"
-      if (h ~ /(router|switch|firewall|ap)/) return "Network"
-      if (h ~ /(tv|chromecast|roku)/) return "TV/Media"
+      if (h ~ /(switch|router|firewall|ap)/) return "Network"
+      if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
+      if (h ~ /(laptop|desktop|pc|workstation|notebook|macbook)/) return "Computer"
       if (h ~ /(iphone|ipad|pixel)/) return "Phone"
-      if (h ~ /(galaxy|s[0-9][0-9]|note[0-9]?)/) return "Phone"
-      if (v ~ /(dahua)/) return "Camera"
-      if (v ~ /(synology|qnap|netapp)/) return "Storage"
-      if (v ~ /(cisco|ubiquiti|mikrotik|netgear|tp-link|arcadyan|sagemcom)/) return "Network"
+      if (h ~ /(galaxy|s[0-9][0-9][^a-z0-9]|note[0-9]?)/) return "Phone"
+      if (h ~ /(redmi|xiaomi|mi[0-9])/ ) return "Phone"
+      if (h ~ /(oneplus|oppo|realme)/) return "Phone"
+      if (h ~ /(huawei|honor)/) return "Phone"
+      if (h ~ /(sony|xperia)/) return "Phone"
+      if (h ~ /(lg|htc)/) return "Phone"
+
+      # Vendor-based (secondary)
+      if (v ~ /proxmox/) return "Server"
+      if (v ~ /dahua/) return "Camera"
+      if (v ~ /(netapp|qnap|synology|asustor|western digital)/) return "Storage"
+      if (v ~ /amazon/ && h ~ /(echo|alexa|kindle|fire)/) return "IoT"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
+        return "Network"
+      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
+      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
+
       return "Unknown"
     }
 
@@ -518,9 +550,13 @@ _netscan_linux() {
       mac=$3
       vendor=$4
       for(i=5;i<=NF;i++) vendor=vendor" "$i
-      type=classify(host,vendor)
+
+      hc=trunc(host,32)
+      if (hc=="[UNKNOWN]" && RED!="")
+        hc=RED hc RESET
+
       printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n", \
-        ip,trunc(host,32),type,mac,trunc(vendor,36)
+        ip, hc, classify(host,vendor), mac, trunc(vendor,36)
     }
   ' | sort -V
 
