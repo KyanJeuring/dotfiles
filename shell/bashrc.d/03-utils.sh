@@ -311,12 +311,8 @@ _netscan_edit_aliases() {
   mkdir -p "$HOME/.config/netaliases"
 
   case "$OSTYPE" in
-    msys*|cygwin*)
-      OS="windows"
-      ;;
-    *)
-      OS="linux"
-      ;;
+    msys*|cygwin*) OS="windows" ;;
+    *)             OS="linux" ;;
   esac
 
   if [[ "$OS" == "linux" ]]; then
@@ -331,7 +327,6 @@ _netscan_edit_aliases() {
 
     NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
     NET_DESC="Interface: $IFACE | Subnet: $NET_ID | Gateway: $GW_IP ($GW_MAC)"
-
   else
     NET_ID="$(powershell.exe -NoProfile -Command '
       $r = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
@@ -348,7 +343,6 @@ _netscan_edit_aliases() {
 
     NET_ID_FILE="${NET_ID//\//_}"
     NET_DESC="Subnet: $NET_ID (Windows)"
-
   fi
 
   ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
@@ -361,13 +355,8 @@ _netscan_edit_aliases() {
 # Format:
 #   <ip> <hostname> [type]
 #
-# Examples:
-#   192.168.x.x my-desktop Computer
-#   192.168.x.x - Server
-#
 # Use '-' to keep detected hostname but override type.
 # Lines starting with '#' are ignored.
-
 EOF
     ok "Created alias file:"
     ok "  $ALIAS_FILE"
@@ -380,10 +369,7 @@ EOF
   [[ -z "$EDITOR_CMD" ]] && command -v nano >/dev/null && EDITOR_CMD="nano"
   [[ -z "$EDITOR_CMD" ]] && command -v vi   >/dev/null && EDITOR_CMD="vi"
 
-  if [[ -z "$EDITOR_CMD" ]]; then
-    err "No editor found (set \$EDITOR)"
-    return 1
-  fi
+  [[ -z "$EDITOR_CMD" ]] && { err "No editor found (set \$EDITOR)"; return 1; }
 
   "$EDITOR_CMD" "$ALIAS_FILE"
 }
@@ -519,20 +505,16 @@ _netscan_linux() {
   info "Scanning local network for devices"
   log
 
-  if ! command -v nmap >/dev/null 2>&1; then
-    err "nmap is not installed"
-    return 1
-  fi
+  command -v nmap >/dev/null 2>&1 || { err "nmap is not installed"; return 1; }
 
   local IFACE SUBNET
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
-
   [[ -z "$SUBNET" ]] && { err "Could not determine local subnet"; return 1; }
 
   if [[ -t 1 ]]; then
-    HEADER="\033[0;34m\033[1m"
-    RED="\033[0;31m\033[1m"
+    HEADER="\033[1;34m"
+    RED="\033[1;31m"
     RESET="\033[0m"
   else
     HEADER=""; RED=""; RESET=""
@@ -545,36 +527,21 @@ _netscan_linux() {
 
   printf "  | ${HEADER}%-15s${RESET} | ${HEADER}%-32s${RESET} | ${HEADER}%-10s${RESET} | ${HEADER}%-17s${RESET} | ${HEADER}%-36s${RESET} |\n" \
     "IP" "Hostname" "Type" "MAC" "Manufacturer"
-
   printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
     "---------------" "--------------------------------" "----------" "-----------------" "------------------------------------"
 
   ip neigh flush all >/dev/null 2>&1 || true
   ping -c 1 -b 255.255.255.255 >/dev/null 2>&1 || true
 
-  mkdir -p "$HOME/.config/netaliases"
-
   GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
   GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
-
   NET_ID="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
   NET_ID_FILE="${NET_ID//\//_}__${GW_MAC//:/}"
 
   ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
-  DEFAULT_ALIAS_FILE="$HOME/.config/netaliases/default"
+  [[ -f "$ALIAS_FILE" ]] || ALIAS_FILE=""
 
-  if [[ -f "$ALIAS_FILE" ]]; then
-    :
-  elif [[ -f "$DEFAULT_ALIAS_FILE" ]]; then
-    ALIAS_FILE="$DEFAULT_ALIAS_FILE"
-  else
-    ALIAS_FILE=""
-  fi
-  if command -v sudo >/dev/null 2>&1; then
-    sudo nmap -sn -PR "$SUBNET"
-  else
-    nmap -sn -PR "$SUBNET"
-  fi |
+  sudo nmap -sn -PR "$SUBNET" 2>/dev/null |
   awk -v RED="$RED" -v RESET="$RESET" -v ALIAS_FILE="$ALIAS_FILE" '
 
     BEGIN {
@@ -588,116 +555,60 @@ _netscan_linux() {
       }
     }
 
-    function classify(host, vendor) {
-      h = tolower(host)
-      v = tolower(vendor)
-
-      # Hostname-based (primary)
+    function classify(h, v) {
+      h = tolower(h); v = tolower(v)
       if (h ~ /(proxmox|pve|lxc|kvm)/) return "Server"
       if (h ~ /(nas|storage)/) return "Storage"
-      if (h ~ /(print|printer|mfc|brother|epson|canon)/) return "Printer"
+      if (h ~ /(print|printer|brother|epson|canon)/) return "Printer"
       if (h ~ /(cam|camera|nvr)/) return "Camera"
-      if (h ~ /(switch|router|firewall|ap)/) return "Network"
+      if (h ~ /(router|switch|firewall|ap)/) return "Network"
       if (h ~ /(tv|smarttv|chromecast|roku)/) return "TV/Media"
-      if (h ~ /(laptop|desktop|pc|workstation|notebook|macbook)/) return "Computer"
+      if (h ~ /(laptop|desktop|pc|workstation|macbook)/) return "Computer"
       if (h ~ /(iphone|ipad|pixel)/) return "Phone"
       if (h ~ /(galaxy|s[0-9][0-9][^a-z0-9]|note[0-9]?)/) return "Phone"
-      if (h ~ /(redmi|xiaomi|mi[0-9])/ ) return "Phone"
-      if (h ~ /(oneplus|oppo|realme)/) return "Phone"
-      if (h ~ /(huawei|honor)/) return "Phone"
-      if (h ~ /(sony|xperia)/) return "Phone"
-      if (h ~ /(lg|htc)/) return "Phone"
-
-      # Vendor-based (secondary)
-      if (v ~ /proxmox/) return "Server"
-      if (v ~ /dahua/) return "Camera"
-      if (v ~ /(netapp|qnap|synology|asustor|western digital)/) return "Storage"
-      if (v ~ /amazon/ && h ~ /(echo|alexa|kindle|fire)/) return "IoT"
-      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom|kreatel)/)
-        return "Network"
-      if (v ~ /(samsung|huawei|xiaomi|oneplus|sony|lg|htc)/) return "Phone"
-      if (v ~ /(dell|lenovo|acer|msi|gigabyte|intel)/) return "Computer"
-
+      if (v ~ /(dahua)/) return "Camera"
+      if (v ~ /(synology|qnap|netapp|western digital)/) return "Storage"
+      if (v ~ /(cisco|ubiquiti|mikrotik|tp-link|netgear|arcadyan|sagemcom)/) return "Network"
       return "Unknown"
     }
 
-    function trunc(s, w) {
-      if (length(s) > w) return substr(s, 1, w-1) "…"
-      return s
-    }
+    function trunc(s,w){ return (length(s)>w)?substr(s,1,w-1)"…":s }
 
     /^Nmap scan report for/ {
-      hostname="[UNKNOWN]"
-      ip=""
-      if ($0 ~ /\(/) {
-        match($0,/for ([^ ]+) \(([^)]+)\)/,m)
-        hostname=m[1]; ip=m[2]
-      } else ip=$NF
+      host="[UNKNOWN]"; ip=$NF
+      if ($0 ~ /\(/) { match($0,/for ([^ ]+) \(([^)]+)\)/,m); host=m[1]; ip=m[2] }
     }
 
     /MAC Address:/ {
-      mac=$3
-      vendor=$4
+      mac=$3; vendor=$4
       for(i=5;i<=NF;i++) vendor=vendor" "$i
-
-      type=classify(hostname,vendor)
-
-      if (ip in alias_host && alias_host[ip] != "-")
-        hostname = alias_host[ip]
-      if (ip in alias_type && alias_type[ip] != "")
-        type = alias_type[ip]
-
-      hc=sprintf("%-32s",trunc(hostname,32))
+      if (ip in alias_host && alias_host[ip] != "-") host=alias_host[ip]
+      type = (ip in alias_type && alias_type[ip] != "") ? alias_type[ip] : classify(host,vendor)
+      hc=sprintf("%-32s",trunc(host,32))
       vc=sprintf("%-36s",trunc(vendor,36))
-
-      if (hostname=="[UNKNOWN]" && RED!="")
-        sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
-
-      printf "  | %-15s | %s | %-10s | %-17s | %s |\n",
-        ip,hc,type,mac,vc
+      if (host=="[UNKNOWN]" && RED!="") sub(/^\[UNKNOWN\]/,RED"[UNKNOWN]"RESET,hc)
+      printf "  | %-15s | %s | %-10s | %-17s | %s |\n", ip,hc,type,mac,vc
     }
   ' | sort -V
 
   SELF_IP="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2}' | cut -d/ -f1)"
+  SELF_HOST="$(hostname)"
+  SELF_MAC="$(cat /sys/class/net/$IFACE/address)"
 
-  SELF_HOST="$(
-    hostnamectl --static 2>/dev/null ||
-    cat /proc/sys/kernel/hostname 2>/dev/null ||
-    uname -n 2>/dev/null ||
-    echo "localhost"
-  )"
+  printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n" \
+    "$SELF_IP" "$SELF_HOST (this device)" "Computer" "$SELF_MAC" "[local]"
 
-  SELF_TYPE="$(
-    printf '%s\n' "$SELF_HOST" |
-    awk '{print tolower($0)}' |
-    grep -Eq '(proxmox|pve|server)' && echo Server || echo Computer
-  )"
-
-  SELF_MAC="$(cat /sys/class/net/$IFACE/address 2>/dev/null)"
-
-  SELF_HOST_CELL="$(printf '%-32s' "$(printf '%.32s' "$SELF_HOST (this device)")")"
-
-  printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n" \
-    "$SELF_IP" "$SELF_HOST_CELL" "$SELF_TYPE" "$SELF_MAC" "[local]"
   log
-
   ok "Scan completed"
 }
 
 ## Scan local network for connected devices
 netscan() {
   case "${1:-}" in
-    --edit-aliases)
-      _netscan_edit_aliases
-      return
-      ;;
+    --edit-aliases) _netscan_edit_aliases; return ;;
   esac
 
-  is_gitbash() {
-    [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]
-  }
-
-  if is_gitbash; then
+  if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
     _netscan_windows
   else
     _netscan_linux
