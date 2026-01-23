@@ -473,6 +473,7 @@ _netscan_linux() {
 
   [[ -z "$IFACE" || -z "$SUBNET" ]] && { err "Could not determine network"; return 1; }
 
+  # ── Colors (TTY-aware)
   if [[ -t 1 ]]; then
     HEADER="\033[1;34m"
     RED="\033[1;31m"
@@ -529,34 +530,42 @@ _netscan_linux() {
       return "Unknown"
     }
 
-    function trunc(s,w){ return (length(s)>w)?substr(s,1,w-1)"…":s }
+    function trunc(s,w) {
+      return (length(s) > w) ? substr(s,1,w-1) "…" : s
+    }
 
     /^Nmap scan report for/ {
-      line=$0
-      sub(/^.*for /,"",line)
+      line = $0
+      sub(/^.*for /, "", line)
       if (line ~ /\(/) {
-        ip=line
-        sub(/^.*\(/,"",ip)
-        sub(/\).*$/,"",ip)
-        sub(/\s*\(.*$/,"",line)
-        host=line
+        ip = line
+        sub(/^.*\(/, "", ip)
+        sub(/\).*$/, "", ip)
+        sub(/\s*\(.*$/, "", line)
+        host = line
       } else {
-        ip=line
-        host="[UNKNOWN]"
+        ip = line
+        host = "[UNKNOWN]"
       }
     }
 
     /MAC Address:/ {
-      mac=$3
-      vendor=$4
-      for(i=5;i<=NF;i++) vendor=vendor" "$i
+      mac = $3
+      vendor = $4
+      for (i = 5; i <= NF; i++) vendor = vendor " " $i
 
-      hc=trunc(host,32)
-      if (hc=="[UNKNOWN]" && RED!="")
-        hc=RED hc RESET
+      raw = trunc(host, 32)
+      cell = sprintf("%-32s", raw)
 
-      printf "  | %-15s | %-32s | %-10s | %-17s | %-36s |\n", \
-        ip, hc, classify(host,vendor), mac, trunc(vendor,36)
+      if (raw == "[UNKNOWN]" && RED != "")
+        sub(/\[UNKNOWN\]/, RED "[UNKNOWN]" RESET, cell)
+
+      printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n",
+        ip,
+        cell,
+        classify(host, vendor),
+        mac,
+        trunc(vendor, 36)
     }
   ' | sort -V
 
