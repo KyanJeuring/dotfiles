@@ -469,7 +469,7 @@ _netscan_linux() {
   command -v nmap >/dev/null || { err "nmap not installed"; return 1; }
 
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
-  SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
+  SUBNET="$(ip -4 route show dev "$IFACE" | awk '/proto kernel/ {print $1; exit}')"
 
   GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
   GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
