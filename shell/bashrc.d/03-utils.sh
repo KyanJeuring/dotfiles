@@ -480,7 +480,6 @@ _netscan_linux() {
 
   [[ -z "$IFACE" || -z "$SUBNET" ]] && { err "Could not determine network"; return 1; }
 
-  # ── Colors (TTY-aware)
   if [[ -t 1 ]]; then
     HEADER="\033[1;34m"
     RED="\033[1;31m"
@@ -577,9 +576,7 @@ _netscan_linux() {
         host = alias_host[ip]
       }
 
-      atype = (ip in alias_type && alias_type[ip] != "-" ?
-          alias_type[ip] :
-          classify(host, vendor))
+      atype = (ip in alias_type && alias_type[ip] != "-" ? alias_type[ip] : classify(host, vendor))
 
       raw = trunc(host, 32)
       cell = sprintf("%-32s", raw)
