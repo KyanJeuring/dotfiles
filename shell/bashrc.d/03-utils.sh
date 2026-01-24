@@ -471,6 +471,13 @@ _netscan_linux() {
   IFACE="$(ip route | awk '/default/ {print $5; exit}')"
   SUBNET="$(ip -4 addr show "$IFACE" | awk '/inet / {print $2; exit}')"
 
+  GW_IP="$(ip route | awk '/default/ {print $3; exit}')"
+  GW_MAC="$(ip neigh show "$GW_IP" | awk '{print $5; exit}')"
+
+  NET_ID_FILE="${SUBNET//\//_}__${GW_MAC//:/}"
+  ALIAS_FILE="$HOME/.config/netaliases/$NET_ID_FILE"
+
+
   [[ -z "$IFACE" || -z "$SUBNET" ]] && { err "Could not determine network"; return 1; }
 
   # ── Colors (TTY-aware)
@@ -496,7 +503,19 @@ _netscan_linux() {
   ping -c 1 -b 255.255.255.255 >/dev/null 2>&1 || true
 
   sudo nmap -sn -PR "$SUBNET" 2>/dev/null |
-  awk -v RED="$RED" -v RESET="$RESET" '
+  awk -v ALIAS_FILE="$ALIAS_FILE" -v RED="$RED" -v RESET="$RESET" '
+
+    BEGIN {
+      if (ALIAS_FILE != "" && (getline < ALIAS_FILE) >= 0) {
+        do {
+          if ($0 ~ /^#/ || NF < 2) continue
+          alias_host[$1] = $2
+          alias_type[$1] = (NF >= 3 ? $3 : "")
+        } while (getline < ALIAS_FILE)
+        close(ALIAS_FILE)
+      }
+    }
+
     function classify(host, vendor) {
       h = tolower(host)
       v = tolower(vendor)
@@ -554,6 +573,14 @@ _netscan_linux() {
       vendor = $4
       for (i = 5; i <= NF; i++) vendor = vendor " " $i
 
+      if (ip in alias_host && alias_host[ip] != "-") {
+        host = alias_host[ip]
+      }
+
+      atype = (ip in alias_type && alias_type[ip] != "-" ?
+          alias_type[ip] :
+          classify(host, vendor))
+
       raw = trunc(host, 32)
       cell = sprintf("%-32s", raw)
 
@@ -563,7 +590,7 @@ _netscan_linux() {
       printf "  | %-15s | %s | %-10s | %-17s | %-36s |\n",
         ip,
         cell,
-        classify(host, vendor),
+        atype,
         mac,
         trunc(vendor, 36)
     }
