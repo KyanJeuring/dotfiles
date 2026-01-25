@@ -212,6 +212,28 @@ vim.keymap.set("n", "gt", ":bnext<CR>")
 vim.keymap.set("n", "gT", ":bprevious<CR>")
 vim.keymap.set("n", "<leader>x", close_buffer_tab)
 
+-- =================================================
+-- Override :q to close buffer/tab first
+-- ==================================================
+vim.api.nvim_create_user_command("Q", function()
+  local buf = vim.api.nvim_get_current_buf()
+  local bt = vim.bo[buf].buftype
+  local ft = vim.bo[buf].filetype
+
+  if bt == "" and ft ~= "NvimTree" then
+    close_buffer_tab()
+  else
+    vim.cmd("confirm quit")
+  end
+end, {})
+
+vim.cmd([[
+  cnoreabbrev <expr> q
+    \ getcmdtype() == ':' && getcmdline() == 'q'
+    \ ? 'Q'
+    \ : 'q'
+]])
+
 -- ==================================================
 -- Floating Keybindings Overview
 -- ==================================================
