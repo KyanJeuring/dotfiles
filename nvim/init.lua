@@ -133,10 +133,6 @@ vim.cmd.colorscheme("onedark")
 -- Command-line styling
 -- ==================================================
 
--- ==================================================
--- Command-line (cmdline) & message area styling
--- ==================================================
-
 local CMD_BG     = "#21252b"
 local CMD_FG     = "#abb2bf"
 local CMD_PROMPT = "#ff7500"

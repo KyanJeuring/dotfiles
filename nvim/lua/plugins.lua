@@ -78,16 +78,9 @@ require("lazy").setup({
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      local NORMAL_BG  = "#2c323c"
-      local INSERT_BG  = "#ff7700"
-      local VISUAL_BG  = "#61afef"
-      local REPLACE_BG = "#e06c75"
-      local COMMAND_BG = "#98c379"
-      local TERMINAL_BG = "#e5c07b"
-
-      local FG_LIGHT   = "#d7dae0"
-      local FG_DARK    = "#21252b"
-      local BG_DARK    = "#21252b"
+      local FG_LIGHT = "#d7dae0"
+      local FG_DARK  = "#1e222a"
+      local BG_DARK  = "#21252b"
 
       require("lualine").setup({
         options = {
@@ -97,24 +90,9 @@ require("lazy").setup({
           component_separators = "",
           theme = {
             normal = {
-              a = { fg = FG_LIGHT, bg = BG_DARK, gui = "bold" },
+              a = { fg = FG_LIGHT, bg = BG_DARK },
               b = { fg = FG_LIGHT, bg = BG_DARK },
               c = { fg = FG_LIGHT, bg = BG_DARK },
-            },
-            insert = {
-              a = { fg = FG_DARK, bg = INSERT_BG, gui = "bold" },
-            },
-            visual = {
-              a = { fg = FG_DARK, bg = VISUAL_BG, gui = "bold" },
-            },
-            replace = {
-              a = { fg = FG_DARK, bg = REPLACE_BG, gui = "bold" },
-            },
-            command = {
-              a = { fg = FG_DARK, bg = COMMAND_BG, gui = "bold" },
-            },
-            terminal = {
-              a = { fg = FG_DARK, bg = TERMINAL_BG, gui = "bold" },
             },
             inactive = {
               a = { fg = "#7f848e", bg = BG_DARK },
@@ -123,9 +101,29 @@ require("lazy").setup({
             },
           },
         },
-
         sections = {
-          lualine_a = { "mode" },
+          lualine_a = {
+            {
+              "mode",
+              fmt = function(mode)
+                return " " .. mode .. " "
+              end,
+              color = function()
+                local mode = vim.fn.mode()
+                local colors = {
+                  n = { bg = "#2c323c", fg = "#abb2bf" }, -- NORMAL
+                  i = { bg = "#ff7700", fg = FG_DARK },     -- INSERT
+                  v = { bg = "#61afef", fg = FG_DARK },     -- VISUAL
+                  V = { bg = "#61afef", fg = FG_DARK },
+                  ["\22"] = { bg = "#61afef", fg = FG_DARK },
+                  R = { bg = "#e06c75", fg = FG_DARK },     -- REPLACE
+                  c = { bg = "#98c379", fg = FG_DARK },     -- COMMAND
+                  t = { bg = "#e5c07b", fg = FG_DARK },     -- TERMINAL
+                }
+                return colors[mode] or { bg = "#2c323c", fg = "#abb2bf" }
+              end,
+            },
+          },
           lualine_b = { "branch" },
           lualine_c = {
             {
@@ -142,7 +140,6 @@ require("lazy").setup({
           lualine_y = { "progress" },
           lualine_z = { "location" },
         },
-
         inactive_sections = {
           lualine_a = {},
           lualine_b = {},
