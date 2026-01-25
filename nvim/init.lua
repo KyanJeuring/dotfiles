@@ -504,20 +504,20 @@ local function open_keys_help()
   local buf = vim.api.nvim_create_buf(false, true)
   local padded = {}
 
-    for _ = 1, PAD_Y do
-      table.insert(padded, "")
-    end
+  for _ = 1, PAD_Y do
+    table.insert(padded, "")
+  end
 
-    local prefix = string.rep(" ", PAD_X)
-    for _, line in ipairs(lines) do
-      table.insert(padded, prefix .. line)
-    end
+  local prefix = string.rep(" ", PAD_X)
+  for _, line in ipairs(lines) do
+    table.insert(padded, prefix .. line)
+  end
 
-    for _ = 1, PAD_Y do
-      table.insert(padded, "")
-    end
+  for _ = 1, PAD_Y do
+    table.insert(padded, "")
+  end
 
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, padded)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, padded)
 
   vim.bo[buf].modifiable = false
   vim.bo[buf].bufhidden = "wipe"
@@ -543,7 +543,7 @@ local function open_keys_help()
     border = "rounded",
   })
 
-  vim.api.nvim_buf_add_highlight(buf, -1, "KeysHelpTitle", 0, 0, -1)
+  vim.api.nvim_buf_add_highlight(buf, -1, "KeysHelpTitle", PAD_Y, 0, -1)
 
   vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = buf, silent = true })
   vim.keymap.set("n", "<Esc>", "<cmd>close<CR>", { buffer = buf, silent = true })
