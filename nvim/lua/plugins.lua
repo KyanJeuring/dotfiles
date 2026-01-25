@@ -42,6 +42,8 @@ require("lazy").setup({
           always_show_bufferline = false,
           separator_style = "slant",
           diagnostics = false,
+          close_command = "bdelete %d",
+          right_mouse_command = "bdelete %d",
         },
       })
     end,
@@ -67,6 +69,7 @@ require("lazy").setup({
             if not node or node.type ~= "file" then return end
 
             vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
+            api.tree.close()
           end
 
           vim.keymap.set("n", "<CR>", open_node, {
