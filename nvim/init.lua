@@ -61,6 +61,53 @@ end
 require("plugins")
 
 -- ==================================================
+-- Custom Keybindings
+-- ==================================================
+
+-- Save file
+vim.keymap.set({ "n", "i", "v" }, "<C-s>", function()
+  vim.cmd("write")
+end, { silent = true, desc = "Save file" })
+
+-- Close / quit
+vim.keymap.set("n", "<C-q>", ":q<CR>", { silent = true, desc = "Quit / close tab" })
+vim.keymap.set("n", "<leader>w", ":w<CR>", { silent = true, desc = "Save file" })
+
+-- Clear search highlight
+vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR><Esc>", { silent = true })
+
+-- Window navigation and resizing
+vim.keymap.set("n", "<C-h>", "<C-w>h")
+vim.keymap.set("n", "<C-j>", "<C-w>j")
+vim.keymap.set("n", "<C-k>", "<C-w>k")
+vim.keymap.set("n", "<C-l>", "<C-w>l")
+
+-- Window resizing
+vim.keymap.set("n", "<C-Up>", ":resize -2<CR>", { silent = true })
+vim.keymap.set("n", "<C-Down>", ":resize +2<CR>", { silent = true })
+vim.keymap.set("n", "<C-Left>", ":vertical resize -2<CR>", { silent = true })
+vim.keymap.set("n", "<C-Right>", ":vertical resize +2<CR>", { silent = true })
+
+-- Duplicate line / selection
+vim.keymap.set("n", "<leader>d", "yyp", { desc = "Duplicate line" })
+vim.keymap.set("v", "<leader>d", "y`>p", { desc = "Duplicate selection" })
+
+-- Move lines up / down
+vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { silent = true })
+vim.keymap.set("n", "<A-k>", ":m .-2<CR>==", { silent = true })
+vim.keymap.set("i", "<A-j>", "<Esc>:m .+1<CR>==gi", { silent = true })
+vim.keymap.set("i", "<A-k>", "<Esc>:m .-2<CR>==gi", { silent = true })
+vim.keymap.set("v", "<A-j>", ":m '>+1<CR>gv=gv", { silent = true })
+vim.keymap.set("v", "<A-k>", ":m '<-2<CR>gv=gv", { silent = true })
+
+-- Move to beginning and end of line
+vim.keymap.set({ "n", "v" }, "H", "^")
+vim.keymap.set({ "n", "v" }, "L", "$")
+
+-- Redo
+vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
+
+-- ==================================================
 -- Theme
 -- ==================================================
 
@@ -343,17 +390,19 @@ local function open_keys_help()
   local lines = {
     "=== Keybindings Overview ===",
     "",
-    "Keybindings Overview:",
-    "  :keys, :keybindings, :bindings, :kb, ?  → Open this help window",
+    "Saving:",
+    "  Ctrl + S            → Save file (normal / insert / visual)",
+    "  Space + w           → Save file",
     "",
     "Tabs (files):",
     "  Tab / Shift-Tab     → Next / Previous tab",
     "  gt / gT             → Next / Previous tab",
     "  Space + x           → Close tab",
+    "  Ctrl + q            → Quit / close tab",
     "  :q                  → Close tab",
     "  :qa                 → Quit all",
     "",
-    "Files & Tree:",
+    "File Tree:",
     "  Space + e           → Toggle file tree",
     "  Space + f           → Focus file tree",
     "  Enter (tree)        → Open file / expand folder",
@@ -363,8 +412,19 @@ local function open_keys_help()
     "  Space + T           → Expand / shrink terminal",
     "  Esc (terminal)      → Normal mode",
     "",
+    "Windows:",
+    "  Ctrl + h/j/k/l      → Move between windows",
+    "  Ctrl + Arrow Keys   → Resize windows",
+    "",
     "Editing:",
-    "  :w                  → Save file",
+    "  Space + d           → Duplicate line / selection",
+    "  Alt + j / Alt + k   → Move line or selection down / up",
+    "  H / L               → Jump to start / end of line",
+    "  U                   → Redo",
+    "  Esc                 → Clear search highlight",
+    "",
+    "Help:",
+    "  :keys, :keybinds, :bindings, :kb, :? → Open this help",
     "",
     "Press q or Esc to close",
   }
