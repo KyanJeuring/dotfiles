@@ -194,31 +194,29 @@ vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
 vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
 vim.keymap.set("n", "<leader>3", ":buffer 3<CR>")
 
--- When the last file buffer is closed, clean up and focus NvimTree
-vim.api.nvim_create_autocmd("BufDelete", {
+-- When no file buffers remain, focus NvimTree and remove empty buffer
+vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
-    -- Check if any normal file buffers remain
+    -- Check if any normal file buffers exist
     for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
       if vim.api.nvim_buf_is_loaded(buf.bufnr)
         and vim.bo[buf.bufnr].buftype == ""
         and vim.bo[buf.bufnr].filetype ~= "NvimTree"
       then
-        return -- still have a file buffer, do nothing
+        return
       end
     end
 
-    -- No file buffers left → delete empty buffer and focus tree
-    vim.schedule(function()
-      local cur = vim.api.nvim_get_current_buf()
+    -- If we are in an empty buffer, clean it up and focus tree
+    local cur = vim.api.nvim_get_current_buf()
+    if vim.bo[cur].buftype == "" and vim.bo[cur].filetype == "" then
+      pcall(vim.cmd, "bdelete " .. cur)
+    end
 
-      if vim.bo[cur].buftype == "" and vim.bo[cur].filetype == "" then
-        pcall(vim.cmd, "bdelete " .. cur)
-      end
-
-      local ok, api = pcall(require, "nvim-tree.api")
-      if ok then
-        api.tree.focus()
-      end
-    end)
+    local ok, api = pcall(require, "nvim-tree.api")
+    if ok then
+      api.tree.focus()
+    end
   end,
 })
+
