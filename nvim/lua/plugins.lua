@@ -111,7 +111,7 @@ require("lazy").setup({
               color = function()
                 local mode = vim.fn.mode()
                 local colors = {
-                  n = { bg = "#2c323c", fg = "#abb2bf" }, -- NORMAL
+                  n = { bg = "#21252b", fg = "#abb2bf" }, -- NORMAL
                   i = { bg = "#ff7700", fg = FG_DARK },     -- INSERT
                   v = { bg = "#61afef", fg = FG_DARK },     -- VISUAL
                   V = { bg = "#61afef", fg = FG_DARK },
@@ -120,7 +120,7 @@ require("lazy").setup({
                   c = { bg = "#98c379", fg = FG_DARK },     -- COMMAND
                   t = { bg = "#e5c07b", fg = FG_DARK },     -- TERMINAL
                 }
-                return colors[mode] or { bg = "#2c323c", fg = "#abb2bf" }
+                return colors[mode] or { bg = "#21252b", fg = "#abb2bf" }
               end,
             },
           },
