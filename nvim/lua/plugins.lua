@@ -64,25 +64,14 @@ require("lazy").setup({
       local api = require("nvim-tree.api")
 
       require("nvim-tree").setup({
-        view = {
-          width = 30,
-          float = {
-            enable = true,
-            open_win_config = {
-              relative = "editor",
-              border = "rounded",
-              width = 30,
-              height = 40,
-              row = 1,
-              col = 1,
-            },
-          },
-        },
+        view = {width = 30},
 
         on_attach = function(bufnr)
           local function open_node()
             local node = api.tree.get_node_under_cursor()
-            if not node or node.type ~= "file" then return end
+            if not node or node.type ~= "file" then
+              return
+            end
 
             vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
           end
