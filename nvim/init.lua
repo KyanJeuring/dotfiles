@@ -104,6 +104,10 @@ vim.keymap.set("v", "<A-k>", ":m '<-2<CR>gv=gv", { silent = true })
 vim.keymap.set({ "n", "v" }, "H", "^")
 vim.keymap.set({ "n", "v" }, "L", "$")
 
+-- Move to beginning and end of the file
+vim.keymap.set({ "n", "v" }, "K", "gg")
+vim.keymap.set({ "n", "v" }, "J", "G")
+
 -- Redo
 vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 
@@ -476,6 +480,7 @@ local function open_keys_help()
     "  Space + d           → Duplicate line / selection",
     "  Alt + j / Alt + k   → Move line or selection down / up",
     "  H / L               → Jump to start / end of line",
+    "  J / K               → Jump to end / start of file",
     "  U                   → Redo",
     "  Esc                 → Clear search highlight",
     "",
