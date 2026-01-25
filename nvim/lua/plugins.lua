@@ -78,24 +78,50 @@ require("lazy").setup({
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
+      local NORMAL = "#ff7500"
+      local INSERT = "#ff7500"
+      local VISUAL = "#ff7500"
+      local REPLACE = "#ff7500"
+      local COMMAND = "#ff7500"
+      local FG      = "#abb2bf"
+      local BG      = "#2c323c"
+      local BG_DARK = "#21252b"
+
       require("lualine").setup({
         options = {
-          theme = "onedark",
+          globalstatus = true,
           icons_enabled = false,
           section_separators = "",
           component_separators = "",
-          globalstatus = true,
+          theme = {
+            normal = {
+              a = { fg = BG_DARK, bg = NORMAL, gui = "bold" },
+              b = { fg = FG, bg = BG },
+              c = { fg = FG, bg = BG_DARK },
+            },
+            insert = {
+              a = { fg = BG_DARK, bg = INSERT, gui = "bold" },
+            },
+            visual = {
+              a = { fg = BG_DARK, bg = VISUAL, gui = "bold" },
+            },
+            replace = {
+              a = { fg = BG_DARK, bg = REPLACE, gui = "bold" },
+            },
+            command = {
+              a = { fg = BG_DARK, bg = COMMAND, gui = "bold" },
+            },
+            inactive = {
+              a = { fg = FG, bg = BG_DARK },
+              b = { fg = FG, bg = BG_DARK },
+              c = { fg = FG, bg = BG_DARK },
+            },
+          },
         },
 
         sections = {
-          lualine_a = {
-            { "mode", color = {} },
-          },
-
-          lualine_b = {
-            { "branch" },
-          },
-
+          lualine_a = { "mode" },
+          lualine_b = { "branch" },
           lualine_c = {
             {
               "filename",
@@ -107,18 +133,9 @@ require("lazy").setup({
               },
             },
           },
-
-          lualine_x = {
-            "filetype",
-          },
-
-          lualine_y = {
-            "progress",
-          },
-
-          lualine_z = {
-            "location",
-          },
+          lualine_x = { "filetype" },
+          lualine_y = { "progress" },
+          lualine_z = { "location" },
         },
 
         inactive_sections = {
