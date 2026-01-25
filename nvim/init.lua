@@ -255,10 +255,6 @@ vim.keymap.set("n", "gt", ":bnext<CR>", { silent = true })
 vim.keymap.set("n", "gT", ":bprevious<CR>", { silent = true })
 vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 
-vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
-vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
-vim.keymap.set("n", "<leader>3", ":buffer 3<CR>")
-
 -- ==================================================
 -- EMPTY BUFFER / WINDOW CLEANUP
 -- ==================================================
