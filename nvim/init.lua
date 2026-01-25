@@ -52,6 +52,8 @@ end
 -- Warn before abandoning modified buffers
 vim.opt.confirm = true
 
+-- Do not hide buffers by default
+vim.opt.hidden = false
 -- ==================================================
 -- Plugins
 -- ==================================================
