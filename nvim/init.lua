@@ -233,3 +233,28 @@ vim.api.nvim_create_autocmd("BufEnter", {
     end
   end,
 })
+
+-- Close the empty editor window when only NvimTree remains
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    -- Check if any normal file buffers exist
+    for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if vim.api.nvim_buf_is_loaded(buf.bufnr)
+        and vim.bo[buf.bufnr].buftype == ""
+        and vim.bo[buf.bufnr].filetype ~= "NvimTree"
+      then
+        return -- at least one file buffer exists → keep editor window
+      end
+    end
+
+    -- No file buffers → close non-tree windows
+    vim.schedule(function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local buf = vim.api.nvim_win_get_buf(win)
+        if vim.bo[buf].filetype ~= "NvimTree" then
+          pcall(vim.api.nvim_win_close, win, true)
+        end
+      end
+    end)
+  end,
+})
