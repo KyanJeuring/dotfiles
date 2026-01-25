@@ -78,14 +78,15 @@ require("lazy").setup({
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      local NORMAL  = "#2c323c"
-      local INSERT  = "#ff7500"
-      local VISUAL  = "#61afef"
-      local REPLACE = "#e06c75"
-      local COMMAND = "#98c379"
-      local FG      = "#abb2bf"
-      local BG      = "#2c323c"
-      local BG_DARK = "#21252b"
+      local NORMAL_BG  = "#2c323c"
+      local INSERT_BG  = "#ff7500"
+      local VISUAL_BG  = "#61afef"
+      local REPLACE_BG = "#e06c75"
+      local COMMAND_BG = "#98c379"
+
+      local FG_LIGHT   = "#d7dae0"
+      local FG_DARK    = "#21252b"
+      local BG_DARK    = "#21252b"
 
       require("lualine").setup({
         options = {
@@ -95,26 +96,26 @@ require("lazy").setup({
           component_separators = "",
           theme = {
             normal = {
-              a = { fg = FG, bg = NORMAL, gui = "bold" },
-              b = { fg = FG, bg = BG },
-              c = { fg = FG, bg = BG_DARK },
+              a = { fg = FG_LIGHT, bg = NORMAL_BG, gui = "bold" },
+              b = { fg = FG_LIGHT, bg = NORMAL_BG },
+              c = { fg = FG_LIGHT, bg = BG_DARK },
             },
             insert = {
-              a = { fg = BG_DARK, bg = INSERT, gui = "bold" },
+              a = { fg = FG_DARK, bg = INSERT_BG, gui = "bold" },
             },
             visual = {
-              a = { fg = BG_DARK, bg = VISUAL, gui = "bold" },
+              a = { fg = FG_DARK, bg = VISUAL_BG, gui = "bold" },
             },
             replace = {
-              a = { fg = BG_DARK, bg = REPLACE, gui = "bold" },
+              a = { fg = FG_DARK, bg = REPLACE_BG, gui = "bold" },
             },
             command = {
-              a = { fg = BG_DARK, bg = COMMAND, gui = "bold" },
+              a = { fg = FG_DARK, bg = COMMAND_BG, gui = "bold" },
             },
             inactive = {
-              a = { fg = FG, bg = BG_DARK },
-              b = { fg = FG, bg = BG_DARK },
-              c = { fg = FG, bg = BG_DARK },
+              a = { fg = "#7f848e", bg = BG_DARK },
+              b = { fg = "#7f848e", bg = BG_DARK },
+              c = { fg = "#7f848e", bg = BG_DARK },
             },
           },
         },
