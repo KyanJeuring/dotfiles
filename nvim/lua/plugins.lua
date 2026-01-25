@@ -42,10 +42,34 @@ require("lazy").setup({
     dependencies = { "nvim-tree/nvim-web-devicons" },
 
     config = function()
+      local api = require("nvim-tree.api")
+
       require("nvim-tree").setup({
         view = {
           width = 30,
         },
+
+        on_attach = function(bufnr)
+          local function open_node()
+            local node = api.tree.get_node_under_cursor()
+            if not node or node.type ~= "file" then
+              return
+            end
+
+            if vim.bo.modified then
+              vim.cmd("tabedit " .. vim.fn.fnameescape(node.absolute_path))
+            else
+              vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
+            end
+          end
+
+          vim.keymap.set("n", "<CR>", open_node, {
+            buffer = bufnr,
+            silent = true,
+            nowait = true,
+          })
+        end,
+
         renderer = {
           group_empty = true,
           add_trailing = true,
@@ -78,28 +102,26 @@ require("lazy").setup({
       })
       
       local function only_nvimtree_open()
-      local wins = vim.api.nvim_list_wins()
-      if #wins ~= 1 then
-        return false
+        local wins = vim.api.nvim_list_wins()
+        if #wins ~= 1 then
+          return false
+        end
+
+        local buf = vim.api.nvim_win_get_buf(wins[1])
+        return vim.bo[buf].filetype == "NvimTree"
       end
 
-      local buf = vim.api.nvim_win_get_buf(wins[1])
-      return vim.bo[buf].filetype == "NvimTree"
-      end
-      
-      -- Keymaps
       vim.keymap.set("n", "<leader>e", function()
-      if only_nvimtree_open() then
-        return
-      end
-      vim.cmd("NvimTreeToggle")
+        if only_nvimtree_open() then
+          return
+        end
+        vim.cmd("NvimTreeToggle")
       end, { silent = true })
 
       vim.keymap.set("n", "<leader>f", function()
-        require("nvim-tree.api").tree.focus()
+        api.tree.focus()
       end, { silent = true })
 
-      -- Performance tweaks
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "NvimTree",
         callback = function()

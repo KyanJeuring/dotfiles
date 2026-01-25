@@ -16,6 +16,9 @@ vim.opt.signcolumn = "yes"
 vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
+-- Warn before abandoning modified buffers
+vim.opt.confirm = true
+
 -- Reduce redraw overhead over SSH
 if vim.env.SSH_TTY then
   vim.opt.mouse = ""
@@ -42,6 +45,12 @@ if vim.fn.has("win32") == 1 then
   vim.opt.shellxquote = ""
 end
 
+-- ==================================================
+-- SAFETY
+-- ==================================================
+
+-- Warn before abandoning modified buffers
+vim.opt.confirm = true
 
 -- ==================================================
 -- Plugins
@@ -173,3 +182,17 @@ vim.keymap.set("n", "<leader>T", toggle_terminal_height, { silent = true })
 
 -- Esc exits terminal insert mode
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
+
+-- ==================================================
+-- Tabs management
+-- ==================================================
+
+vim.keymap.set("n", "<leader>tn", ":tabnext<CR>", { silent = true })
+vim.keymap.set("n", "<leader>tp", ":tabprevious<CR>", { silent = true })
+vim.keymap.set("n", "<leader>tc", ":tabclose<CR>", { silent = true })
+
+vim.keymap.set("n", "<leader>1", "1gt")
+vim.keymap.set("n", "<leader>2", "2gt")
+vim.keymap.set("n", "<leader>3", "3gt")
+
+vim.opt.showtabline = 1
