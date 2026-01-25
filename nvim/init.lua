@@ -333,56 +333,77 @@ vim.cmd([[
 ]])
 
 -- ==================================================
--- :Keys — keybindings overview
+-- Floating Keybindings Overview
 -- ==================================================
-vim.api.nvim_create_user_command("Keys", function()
+
+local function open_keys_help()
   local lines = {
-    "",
     "=== Keybindings Overview ===",
     "",
     "Tabs (files):",
-    "  Tab / Shift-Tab   → Next / Previous tab",
-    "  gt / gT           → Next / Previous tab",
-    "  Space + x         → Close tab",
-    "  :q                → Close tab",
-    "  :qa               → Quit all",
+    "  Tab / Shift-Tab     → Next / Previous tab",
+    "  gt / gT             → Next / Previous tab",
+    "  Space + x           → Close tab",
+    "  :q                  → Close tab",
+    "  :qa                 → Quit all",
     "",
     "Files & Tree:",
-    "  Space + e         → Toggle file tree",
-    "  Space + f         → Focus file tree",
-    "  Enter (tree)      → Open file / expand folder",
+    "  Space + e           → Toggle file tree",
+    "  Space + f           → Focus file tree",
+    "  Enter (tree)        → Open file / expand folder",
     "",
     "Terminal:",
-    "  Space + t         → Toggle terminal",
-    "  Space + T         → Expand / shrink terminal",
-    "  Esc (terminal)    → Normal mode",
+    "  Space + t           → Toggle terminal",
+    "  Space + T           → Expand / shrink terminal",
+    "  Esc (terminal)      → Normal mode",
     "",
     "Editing:",
-    "  :w                → Save file",
+    "  :w                  → Save file",
     "",
+    "Press q or Esc to close",
   }
 
-  vim.cmd("new")
-  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-  vim.bo.buftype = "nofile"
-  vim.bo.bufhidden = "wipe"
-  vim.bo.swapfile = false
-  vim.bo.modifiable = false
-  vim.bo.readonly = true
-  vim.bo.filetype = "help"
-  vim.cmd("setlocal nobuflisted")
-end, {})
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "help"
+  vim.bo[buf].readonly = true
 
-vim.cmd([[
-  " Friendly aliases for keybindings overview
-  cnoreabbrev <expr> keys
-        \ getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
-  cnoreabbrev <expr> keybinds
-        \ getcmdtype() == ':' && getcmdline() == 'keybinds' ? 'Keys' : 'keybinds'
-  cnoreabbrev <expr> bindings
-        \ getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
-  cnoreabbrev <expr> kb
-        \ getcmdtype() == ':' && getcmdline() == 'kb' ? 'Keys' : 'kb'
-  cnoreabbrev <expr> ?
-        \ getcmdtype() == ':' && getcmdline() == '?' ? 'Keys' : '?'
-]])
+  local width = 60
+  local height = #lines + 2
+  local ui = vim.api.nvim_list_uis()[1]
+
+  local row = math.floor((ui.height - height) / 2)
+  local col = math.floor((ui.width - width) / 2)
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = "minimal",
+    border = "rounded",
+  })
+
+  local tree_bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
+  if tree_bg then
+    vim.api.nvim_set_hl(0, "KeysHelpNormal", { bg = tree_bg })
+    vim.api.nvim_win_set_option(win, "winhl", "Normal:KeysHelpNormal")
+  end
+
+  vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = buf, silent = true })
+  vim.keymap.set("n", "<Esc>", "<cmd>close<CR>", { buffer = buf, silent = true })
+end
+
+-- ==================================================
+-- Keybindings overview command aliases
+-- ==================================================
+
+vim.api.nvim_create_user_command("Keys", open_keys_help, {})
+vim.api.nvim_create_user_command("keys", open_keys_help, {})
+vim.api.nvim_create_user_command("Help", open_keys_help, {})
+vim.api.nvim_create_user_command("help", open_keys_help, {})
+vim.api.nvim_create_user_command("Bindings", open_keys_help, {})
+vim.api.nvim_create_user_command("bindings", open_keys_help, {})
