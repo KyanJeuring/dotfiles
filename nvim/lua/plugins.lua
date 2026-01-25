@@ -39,7 +39,7 @@ require("lazy").setup({
     config = function()
       require("bufferline").setup({
         options = {
-          always_show_bufferline = false,
+          always_show_bufferline = true,
           separator_style = { "|", "|" },
           diagnostics = false,
           close_command = "bdelete %d",
@@ -53,6 +53,15 @@ require("lazy").setup({
           left_trunc_marker = "<",
           right_trunc_marker = ">",
 
+          offsets = {
+            {
+              filetype = "NvimTree",
+              text = "",
+              highlight = "BufferLineFill",
+              separator = true,
+            },
+          },
+          
           custom_filter = function(bufnr)
             return vim.bo[bufnr].buftype ~= "terminal"
           end,
