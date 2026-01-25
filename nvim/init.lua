@@ -126,6 +126,41 @@ vim.api.nvim_create_autocmd("WinLeave", {
 vim.cmd.colorscheme("onedark")
 
 -- ==================================================
+-- Neutralize Neovim 0.10+ statusline mode colors
+-- ==================================================
+
+local status_fg = "#abb2bf"
+local status_bg = "#2c323c"
+
+local mode_groups = {
+  "StatusLineModeNormal",
+  "StatusLineModeInsert",
+  "StatusLineModeVisual",
+  "StatusLineModeReplace",
+  "StatusLineModeCommand",
+}
+
+for _, group in ipairs(mode_groups) do
+  vim.api.nvim_set_hl(0, group, {
+    fg = status_fg,
+    bg = status_bg,
+    bold = true,
+  })
+end
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = function()
+    for _, group in ipairs(mode_groups) do
+      vim.api.nvim_set_hl(0, group, {
+        fg = status_fg,
+        bg = status_bg,
+        bold = true,
+      })
+    end
+  end,
+})
+
+-- ==================================================
 -- ORANGE title for floating Keys window
 -- ==================================================
 
@@ -159,25 +194,6 @@ remove_window_separators()
 
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = remove_window_separators,
-})
-
--- ==================================================
--- Statusline cleanup
--- ==================================================
-
-vim.api.nvim_set_hl(0, "StatusLine", {
-  fg = "#abb2bf",
-  bg = "#2c323c",
-})
-
-vim.api.nvim_set_hl(0, "StatusLineNC", {
-  fg = "#5c6370",
-  bg = "#2c323c",
-})
-
-vim.api.nvim_set_hl(0, "ModeMsg", {
-  fg = ORANGE,
-  bold = true,
 })
 
 -- ==================================================
