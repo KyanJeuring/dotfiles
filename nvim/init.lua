@@ -61,10 +61,14 @@ require("plugins")
 vim.cmd.colorscheme("onedark")
 
 -- Window separator color
-vim.opt.fillchars:append({ vert = "│" })
+vim.opt.fillchars = vim.opt.fillchars
+  + { vert = "│", vertleft = "│", vertright = "│", verthoriz = "│" }
 
 local function set_window_separator()
   local sep_color = "#3b4048"
+
+  vim.api.nvim_set_hl(0, "WinSeparator", {})
+  vim.api.nvim_set_hl(0, "VertSplit", {})
 
   vim.api.nvim_set_hl(0, "WinSeparator", { fg = sep_color, bg = "NONE" })
   vim.api.nvim_set_hl(0, "VertSplit",   { fg = sep_color, bg = "NONE" })
