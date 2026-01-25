@@ -249,9 +249,11 @@ local function close_buffer_tab()
 end
 
 -- Keymaps
-vim.keymap.set("n", "<leader>bn", ":bnext<CR>", { silent = true })
-vim.keymap.set("n", "<leader>bp", ":bprevious<CR>", { silent = true })
-vim.keymap.set("n", "<leader>bc", close_buffer_tab, { silent = true })
+vim.keymap.set("n", "<Tab>", ":bnext<CR>", { silent = true })
+vim.keymap.set("n", "<S-Tab>", ":bprevious<CR>", { silent = true })
+vim.keymap.set("n", "gt", ":bnext<CR>", { silent = true })
+vim.keymap.set("n", "gT", ":bprevious<CR>", { silent = true })
+vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 
 vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
 vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
