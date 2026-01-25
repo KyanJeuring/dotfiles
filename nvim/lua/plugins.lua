@@ -66,6 +66,16 @@ require("lazy").setup({
       require("nvim-tree").setup({
         view = {width = 30},
 
+        actions = {
+          open_file = {
+            quit_on_open = false,
+            resize_window = false,
+            window_picker = {
+              enable = false,
+            },
+          },
+        },
+
         on_attach = function(bufnr)
           local function open_node()
             local node = api.tree.get_node_under_cursor()
