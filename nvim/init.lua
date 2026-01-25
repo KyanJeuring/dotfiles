@@ -76,7 +76,7 @@ vim.keymap.set({ "n", "i", "v" }, "<C-s>", function()
 end, { silent = true, desc = "Save file" })
 
 -- Close / quit
-vim.keymap.set("n", "<C-q>", ":q<CR>", { silent = true, desc = "Quit / close tab" })
+vim.keymap.set("n", "<C-q>", ":Q<CR>", { silent = true, desc = "Quit / close tab" })
 vim.keymap.set("n", "<leader>w", ":w<CR>", { silent = true, desc = "Save file" })
 
 -- Clear search highlight
