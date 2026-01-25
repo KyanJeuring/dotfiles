@@ -78,11 +78,11 @@ require("lazy").setup({
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      local NORMAL = "#ff7500"
-      local INSERT = "#ff7500"
-      local VISUAL = "#ff7500"
-      local REPLACE = "#ff7500"
-      local COMMAND = "#ff7500"
+      local NORMAL  = "#2c323c"
+      local INSERT  = "#ff7500"
+      local VISUAL  = "#61afef"
+      local REPLACE = "#e06c75"
+      local COMMAND = "#98c379"
       local FG      = "#abb2bf"
       local BG      = "#2c323c"
       local BG_DARK = "#21252b"
