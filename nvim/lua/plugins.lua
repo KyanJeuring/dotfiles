@@ -97,8 +97,8 @@ require("lazy").setup({
           component_separators = "",
           theme = {
             normal = {
-              a = { fg = FG_LIGHT, bg = NORMAL_BG, gui = "bold" },
-              b = { fg = FG_LIGHT, bg = NORMAL_BG },
+              a = { fg = FG_LIGHT, bg = BG_DARK, gui = "bold" },
+              b = { fg = FG_LIGHT, bg = BG_DARK },
               c = { fg = FG_LIGHT, bg = BG_DARK },
             },
             insert = {
