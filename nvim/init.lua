@@ -160,6 +160,18 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   end,
 })
 
+vim.opt.statusline = table.concat({
+  " ",
+  "%#StatusLine#",
+  "%f",
+  "%m",
+  "%=",
+  "%y",
+  " ",
+  "%l:%c",
+  " ",
+})
+
 -- ==================================================
 -- ORANGE title for floating Keys window
 -- ==================================================
