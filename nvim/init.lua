@@ -83,10 +83,21 @@ vim.keymap.set("n", "<C-k>", "<C-w>k")
 vim.keymap.set("n", "<C-l>", "<C-w>l")
 
 -- Window resizing
-vim.keymap.set("n", "<C-Up>", ":resize -2<CR>", { silent = true })
-vim.keymap.set("n", "<C-Down>", ":resize +2<CR>", { silent = true })
-vim.keymap.set("n", "<C-Left>", ":vertical resize -2<CR>", { silent = true })
-vim.keymap.set("n", "<C-Right>", ":vertical resize +2<CR>", { silent = true })
+vim.keymap.set("n", "<C-Up>", function()
+  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) - 2)
+end, { silent = true })
+
+vim.keymap.set("n", "<C-Down>", function()
+  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) + 2)
+end, { silent = true })
+
+vim.keymap.set("n", "<C-Left>", function()
+  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) - 4)
+end, { silent = true })
+
+vim.keymap.set("n", "<C-Right>", function()
+  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) + 4)
+end, { silent = true })
 
 -- Duplicate line / selection
 vim.keymap.set("n", "<leader>d", "yyp", { desc = "Duplicate line" })
