@@ -40,10 +40,19 @@ require("lazy").setup({
       require("bufferline").setup({
         options = {
           always_show_bufferline = false,
-          separator_style = "slant",
+          separator_style = { "|", "|" },
           diagnostics = false,
           close_command = "bdelete %d",
           right_mouse_command = "bdelete %d",
+          show_buffer_icons = false,
+          show_buffer_close_icons = true,
+          show_close_icon = true,
+          buffer_close_icon = " x ",
+          close_icon = " x ",
+          modified_icon = " * ",
+          left_trunc_marker = "<",
+          right_trunc_marker = ">",
+
           custom_filter = function(bufnr)
             return vim.bo[bufnr].buftype ~= "terminal"
           end,
@@ -99,7 +108,41 @@ require("lazy").setup({
         renderer = {
           group_empty = true,
           add_trailing = true,
-          icons = { show = { file=false, folder=false, folder_arrow=false, git=false } },
+          icons = {
+            webdev_colors = false,
+            git_placement = "none",
+            show = {
+              file = false,
+              folder = false,
+              folder_arrow = false,
+              git = false,
+            },
+            glyphs = {
+              default = " ",
+              symlink = "@",
+
+              folder = {
+                default = ">",
+                open = "v",
+                empty = ">",
+                empty_open = "v",
+                symlink = ">@",
+                symlink_open = "v@",
+                arrow_open = "v",
+                arrow_closed = ">",
+              },
+
+              git = {
+                unstaged = "~",
+                staged = "+",
+                unmerged = "!",
+                renamed = ">",
+                untracked = "?",
+                deleted = "x",
+                ignored = ".",
+              },
+            },
+          },
         },
 
         update_focused_file = { enable = true },
