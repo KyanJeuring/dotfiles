@@ -414,10 +414,19 @@ vim.api.nvim_create_autocmd("BufEnter", {
 
     vim.schedule(function()
       for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local cfg = vim.api.nvim_win_get_config(win)
+
+        -- Skip floating windows (help, popups, etc.)
+        if cfg.relative ~= "" then
+          goto continue
+        end
+
         local buf = vim.api.nvim_win_get_buf(win)
         if vim.bo[buf].filetype ~= "NvimTree" then
           pcall(vim.api.nvim_win_close, win, true)
         end
+
+        ::continue::
       end
     end)
   end,
