@@ -220,3 +220,14 @@ vim.api.nvim_create_autocmd("BufEnter", {
   end,
 })
 
+-- Never show [No Name] buffers as tabs
+vim.api.nvim_create_autocmd("BufNew", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+
+    -- If this is an unnamed buffer, hide it from buffer lists
+    if vim.api.nvim_buf_get_name(buf) == "" then
+      vim.bo[buf].buflisted = false
+    end
+  end,
+})
