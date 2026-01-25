@@ -331,3 +331,58 @@ end, {})
 vim.cmd([[
   cnoreabbrev <expr> q getcmdtype() == ':' && getcmdline() == 'q' ? 'Q' : 'q'
 ]])
+
+-- ==================================================
+-- :Keys — keybindings overview
+-- ==================================================
+vim.cmd([[
+  " Friendly aliases for keybindings overview
+  cnoreabbrev <expr> keys
+        \ getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
+  cnoreabbrev <expr> keybinds
+        \ getcmdtype() == ':' && getcmdline() == 'keybinds' ? 'Keys' : 'keybinds'
+  cnoreabbrev <expr> bindings
+        \ getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
+  cnoreabbrev <expr> kb
+        \ getcmdtype() == ':' && getcmdline() == 'kb' ? 'Keys' : 'kb'
+  cnoreabbrev <expr> ?
+        \ getcmdtype() == ':' && getcmdline() == '?' ? 'Keys' : '?'
+]])
+
+vim.api.nvim_create_user_command("Keys", function()
+  local lines = {
+    "",
+    "=== Keybindings Overview ===",
+    "",
+    "Tabs (files):",
+    "  Tab / Shift-Tab   → Next / Previous tab",
+    "  gt / gT           → Next / Previous tab",
+    "  Space + x         → Close tab",
+    "  :q                → Close tab",
+    "  :qa               → Quit all",
+    "",
+    "Files & Tree:",
+    "  Space + e         → Toggle file tree",
+    "  Space + f         → Focus file tree",
+    "  Enter (tree)      → Open file / expand folder",
+    "",
+    "Terminal:",
+    "  Space + t         → Toggle terminal",
+    "  Space + T         → Expand / shrink terminal",
+    "  Esc (terminal)    → Normal mode",
+    "",
+    "Editing:",
+    "  :w                → Save file",
+    "",
+  }
+
+  vim.cmd("new")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+  vim.bo.buftype = "nofile"
+  vim.bo.bufhidden = "wipe"
+  vim.bo.swapfile = false
+  vim.bo.modifiable = false
+  vim.bo.readonly = true
+  vim.bo.filetype = "help"
+  vim.cmd("setlocal nobuflisted")
+end, {})
