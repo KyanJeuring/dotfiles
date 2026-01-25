@@ -3,6 +3,7 @@
 -- ==================================================
 
 vim.opt.showmode = false
+vim.opt.t_ut = ""
 
 vim.opt.number = true
 
