@@ -279,3 +279,5 @@ require("lazy").setup({
   },
 
 })
+
+vim.cmd.colorscheme(vim.g.colors_name or "onedark")
