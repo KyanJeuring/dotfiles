@@ -137,31 +137,60 @@ vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 vim.keymap.set("n", "<leader>bn", ":bnext<CR>",     { silent = true })
 vim.keymap.set("n", "<leader>bp", ":bprevious<CR>",{ silent = true })
 vim.keymap.set("n", "<leader>bc", function()
-  local current = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+  local cur = vim.api.nvim_get_current_buf()
 
-  -- Get all listed, normal file buffers
-  local buffers = vim.fn.getbufinfo({ buflisted = 1 })
+  -- If we're not on a normal file buffer, just try to delete it normally.
+  if vim.bo[cur].buftype ~= "" then
+    vim.cmd("confirm bdelete")
+    return
+  end
 
-  -- Find a different buffer to switch to
-  for _, buf in ipairs(buffers) do
-    if buf.bufnr ~= current
-      and vim.api.nvim_buf_is_loaded(buf.bufnr)
-      and vim.bo[buf.bufnr].buftype == ""
-    then
-      vim.cmd("buffer " .. buf.bufnr)
-      vim.cmd("bdelete " .. current)
-      return
+  -- Pick a replacement buffer:
+  -- 1) alternate buffer (#) if it's a normal listed file buffer
+  -- 2) otherwise any other listed normal file buffer
+  local function is_good_buf(b)
+    return b
+      and b > 0
+      and vim.fn.buflisted(b) == 1
+      and vim.api.nvim_buf_is_loaded(b)
+      and vim.bo[b].buftype == ""
+      and vim.bo[b].filetype ~= "NvimTree"
+  end
+
+  local repl = vim.fn.bufnr("#")
+  if not is_good_buf(repl) then
+    repl = nil
+    for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if info.bufnr ~= cur and is_good_buf(info.bufnr) then
+        repl = info.bufnr
+        break
+      end
     end
   end
 
-  -- No other file buffers → delete and focus tree
-  vim.cmd("bdelete " .. current)
+  -- If no replacement file buffer exists, delete and focus the tree.
+  if not repl then
+    vim.cmd("confirm bdelete " .. cur)
+    local ok, api = pcall(require, "nvim-tree.api")
+    if ok then api.tree.focus() end
+    return
+  end
 
-  local ok, api = pcall(require, "nvim-tree.api")
-  if ok then
-    api.tree.focus()
+  -- Force the editor window to show the replacement buffer FIRST,
+  -- so focus never falls into NvimTree after deletion.
+  vim.api.nvim_win_set_buf(win, repl)
+
+  -- Now delete the old buffer (with confirm prompts if modified).
+  local ok = pcall(vim.cmd, "confirm bdelete " .. cur)
+  if not ok then
+    -- If user cancelled, put the original buffer back in the same window.
+    if vim.api.nvim_buf_is_valid(cur) then
+      vim.api.nvim_win_set_buf(win, cur)
+    end
   end
 end, { silent = true })
+
 
 
 vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
