@@ -89,7 +89,7 @@ require("lazy").setup({
 
         sections = {
           lualine_a = {
-            { "mode", color = { fg = "#ff7500", gui = "bold" } },
+            { "mode", color = {} },
           },
 
           lualine_b = {
