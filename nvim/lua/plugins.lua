@@ -64,7 +64,10 @@ require("lazy").setup({
       local api = require("nvim-tree.api")
 
       require("nvim-tree").setup({
-        view = {width = 30},
+        view = {
+          width = 30,
+          adaptive_size = false,
+        },
 
         actions = {
           open_file = {
