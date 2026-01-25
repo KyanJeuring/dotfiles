@@ -107,20 +107,21 @@ local function resize_width(delta)
   )
 end
 
+-- Resize with arrow keys
 vim.keymap.set("n", "<C-Up>", function()
-  resize_height(-2)
+  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) - 2)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Down>", function()
-  resize_height(2)
+  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) + 2)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Left>", function()
-  resize_width(-4)
+  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) + 4)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Right>", function()
-  resize_width(4)
+  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) - 4)
 end, { silent = true })
 
 -- Duplicate line / selection
