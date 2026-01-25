@@ -58,7 +58,7 @@ require("lazy").setup({
               filetype = "NvimTree",
               text = "",
               highlight = "BufferLineFill",
-              separator = true,
+              separator = false,
             },
           },
           
