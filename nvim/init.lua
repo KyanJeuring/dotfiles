@@ -60,6 +60,22 @@ require("plugins")
 
 vim.cmd.colorscheme("onedark")
 
+-- Window separator color
+vim.opt.fillchars:append({ vert = "│" })
+
+local function set_window_separator()
+  local sep_color = "#3b4048"
+
+  vim.api.nvim_set_hl(0, "WinSeparator", { fg = sep_color, bg = "NONE" })
+  vim.api.nvim_set_hl(0, "VertSplit",   { fg = sep_color, bg = "NONE" })
+end
+
+set_window_separator()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_window_separator,
+})
+
 -- Bufferline / NvimTree background alignment
 local function fix_tree_bufferline_bg()
   local tree_bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
