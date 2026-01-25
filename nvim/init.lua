@@ -137,21 +137,26 @@ vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 vim.keymap.set("n", "<leader>bn", ":bnext<CR>",     { silent = true })
 vim.keymap.set("n", "<leader>bp", ":bprevious<CR>",{ silent = true })
 vim.keymap.set("n", "<leader>bc", function()
-  local bufs = vim.fn.getbufinfo({ buflisted = 1 })
-  local cur = vim.api.nvim_get_current_buf()
+  local current = vim.api.nvim_get_current_buf()
 
-  -- Delete current buffer
-  vim.cmd("bdelete")
+  -- Get all listed, normal file buffers
+  local buffers = vim.fn.getbufinfo({ buflisted = 1 })
 
-  -- Find next listed buffer
-  for _, buf in ipairs(bufs) do
-    if buf.bufnr ~= cur and vim.api.nvim_buf_is_loaded(buf.bufnr) then
+  -- Find a different buffer to switch to
+  for _, buf in ipairs(buffers) do
+    if buf.bufnr ~= current
+      and vim.api.nvim_buf_is_loaded(buf.bufnr)
+      and vim.bo[buf.bufnr].buftype == ""
+    then
       vim.cmd("buffer " .. buf.bufnr)
+      vim.cmd("bdelete " .. current)
       return
     end
   end
 
-  -- Fallback: focus tree if no buffers left
+  -- No other file buffers → delete and focus tree
+  vim.cmd("bdelete " .. current)
+
   local ok, api = pcall(require, "nvim-tree.api")
   if ok then
     api.tree.focus()
