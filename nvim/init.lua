@@ -402,8 +402,9 @@ end
 -- ==================================================
 
 vim.api.nvim_create_user_command("Keys", open_keys_help, {})
-vim.api.nvim_create_user_command("keys", open_keys_help, {})
-vim.api.nvim_create_user_command("Help", open_keys_help, {})
-vim.api.nvim_create_user_command("help", open_keys_help, {})
-vim.api.nvim_create_user_command("Bindings", open_keys_help, {})
-vim.api.nvim_create_user_command("bindings", open_keys_help, {})
+
+vim.cmd([[
+  cnoreabbrev <expr> keys getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
+  cnoreabbrev <expr> help getcmdtype() == ':' && getcmdline() == 'help' ? 'Keys' : 'help'
+  cnoreabbrev <expr> bindings getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
+]])
