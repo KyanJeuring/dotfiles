@@ -176,6 +176,14 @@ vim.opt.statusline = table.concat({
   " ",
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "NvimTree",
+  callback = function()
+    vim.opt_local.statusline = " "
+  end,
+})
+
+
 -- ==================================================
 -- ORANGE title for floating Keys window
 -- ==================================================
