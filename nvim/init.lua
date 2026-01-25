@@ -60,24 +60,20 @@ require("plugins")
 
 vim.cmd.colorscheme("onedark")
 
--- Window separator color
+-- Remove window separators
 vim.opt.fillchars = vim.opt.fillchars
-  + { vert = "│", vertleft = "│", vertright = "│", verthoriz = "│" }
+  + { vert = " ", vertleft = " ", vertright = " ", verthoriz = " " }
 
-local function set_window_separator()
-  local sep_color = "#3b4048"
-
-  vim.api.nvim_set_hl(0, "WinSeparator", {})
-  vim.api.nvim_set_hl(0, "VertSplit", {})
-
-  vim.api.nvim_set_hl(0, "WinSeparator", { fg = sep_color, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "VertSplit",   { fg = sep_color, bg = "NONE" })
+local function remove_window_separators()
+  -- Fully neutralize separator highlight groups
+  vim.api.nvim_set_hl(0, "WinSeparator", { fg = "NONE", bg = "NONE" })
+  vim.api.nvim_set_hl(0, "VertSplit",   { fg = "NONE", bg = "NONE" })
 end
 
-set_window_separator()
+remove_window_separators()
 
 vim.api.nvim_create_autocmd("ColorScheme", {
-  callback = set_window_separator,
+  callback = remove_window_separators,
 })
 
 -- Bufferline / NvimTree background alignment
