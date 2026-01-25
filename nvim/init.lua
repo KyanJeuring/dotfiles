@@ -377,7 +377,7 @@ vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 -- ==================================================
 
 -- Focus tree when no file buffers remain
-vim.api.nvim_create_autocmd("BufEnter", {
+vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   callback = function()
     for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
       if vim.api.nvim_buf_is_loaded(buf.bufnr)
@@ -388,8 +388,10 @@ vim.api.nvim_create_autocmd("BufEnter", {
       end
     end
 
-    local ok, api = pcall(require, "nvim-tree.api")
-    if ok then api.tree.focus() end
+    vim.schedule(function()
+      local ok, api = pcall(require, "nvim-tree.api")
+      if ok then api.tree.focus() end
+    end)
   end,
 })
 
@@ -407,35 +409,34 @@ vim.api.nvim_create_autocmd("BufEnter", {
 })
 
 -- Close empty editor window when only tree remains
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function()
-    for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-      if vim.api.nvim_buf_is_loaded(buf.bufnr)
-        and vim.bo[buf.bufnr].buftype == ""
-        and vim.bo[buf.bufnr].filetype ~= "NvimTree"
-      then
-        return
-      end
+local function cleanup_if_only_tree_left()
+  for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+    if vim.api.nvim_buf_is_loaded(buf.bufnr)
+      and vim.bo[buf.bufnr].buftype == ""
+      and vim.bo[buf.bufnr].filetype ~= "NvimTree"
+    then
+      return
     end
+  end
 
-    vim.schedule(function()
-      for _, win in ipairs(vim.api.nvim_list_wins()) do
-        local cfg = vim.api.nvim_win_get_config(win)
-
-        -- Skip floating windows (help, popups, etc.)
-        if cfg.relative ~= "" then
-          goto continue
-        end
-
-        local buf = vim.api.nvim_win_get_buf(win)
-        if vim.bo[buf].filetype ~= "NvimTree" then
-          pcall(vim.api.nvim_win_close, win, true)
-        end
-
-        ::continue::
+  vim.schedule(function()
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      local cfg = vim.api.nvim_win_get_config(win)
+      if cfg.relative ~= "" then
+        goto continue
       end
-    end)
-  end,
+
+      local buf = vim.api.nvim_win_get_buf(win)
+      if vim.bo[buf].filetype ~= "NvimTree" then
+        pcall(vim.api.nvim_win_close, win, true)
+      end
+      ::continue::
+    end
+  end)
+end
+
+vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
+  callback = cleanup_if_only_tree_left,
 })
 
 -- ==================================================
