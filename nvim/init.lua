@@ -340,6 +340,9 @@ local function open_keys_help()
   local lines = {
     "=== Keybindings Overview ===",
     "",
+    "Keybindings Overview:",
+    "  :keys, :help, :bindings",
+    "",
     "Tabs (files):",
     "  Tab / Shift-Tab     → Next / Previous tab",
     "  gt / gT             → Next / Previous tab",
@@ -404,7 +407,15 @@ end
 vim.api.nvim_create_user_command("Keys", open_keys_help, {})
 
 vim.cmd([[
-  cnoreabbrev <expr> keys getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
-  cnoreabbrev <expr> help getcmdtype() == ':' && getcmdline() == 'help' ? 'Keys' : 'help'
-  cnoreabbrev <expr> bindings getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
+  " Friendly aliases for keybindings overview
+  cnoreabbrev <expr> keys
+        \ getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
+  cnoreabbrev <expr> keybinds
+        \ getcmdtype() == ':' && getcmdline() == 'keybinds' ? 'Keys' : 'keybinds'
+  cnoreabbrev <expr> bindings
+        \ getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
+  cnoreabbrev <expr> kb
+        \ getcmdtype() == ':' && getcmdline() == 'kb' ? 'Keys' : 'kb'
+  cnoreabbrev <expr> ?
+        \ getcmdtype() == ':' && getcmdline() == '?' ? 'Keys' : '?'
 ]])
