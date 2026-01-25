@@ -136,7 +136,28 @@ vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 vim.keymap.set("n", "<leader>bn", ":bnext<CR>",     { silent = true })
 vim.keymap.set("n", "<leader>bp", ":bprevious<CR>",{ silent = true })
-vim.keymap.set("n", "<leader>bc", ":bdelete<CR>",  { silent = true })
+vim.keymap.set("n", "<leader>bc", function()
+  local bufs = vim.fn.getbufinfo({ buflisted = 1 })
+  local cur = vim.api.nvim_get_current_buf()
+
+  -- Delete current buffer
+  vim.cmd("bdelete")
+
+  -- Find next listed buffer
+  for _, buf in ipairs(bufs) do
+    if buf.bufnr ~= cur and vim.api.nvim_buf_is_loaded(buf.bufnr) then
+      vim.cmd("buffer " .. buf.bufnr)
+      return
+    end
+  end
+
+  -- Fallback: focus tree if no buffers left
+  local ok, api = pcall(require, "nvim-tree.api")
+  if ok then
+    api.tree.focus()
+  end
+end, { silent = true })
+
 
 vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
 vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
