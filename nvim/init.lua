@@ -262,6 +262,36 @@ vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 -- EMPTY BUFFER / WINDOW CLEANUP
 -- ==================================================
 
+-- Focus tree when no file buffers remain
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if vim.api.nvim_buf_is_loaded(buf.bufnr)
+        and vim.bo[buf.bufnr].buftype == ""
+        and vim.bo[buf.bufnr].filetype ~= "NvimTree"
+      then
+        return
+      end
+    end
+
+    local ok, api = pcall(require, "nvim-tree.api")
+    if ok then api.tree.focus() end
+  end,
+})
+
+-- Never show [No Name] buffers as tabs
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.api.nvim_buf_get_name(buf) == ""
+      and vim.bo[buf].buftype == ""
+      and vim.bo[buf].filetype == ""
+    then
+      vim.bo[buf].buflisted = false
+    end
+  end,
+})
+
 -- Close empty editor window when only tree remains
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
@@ -276,18 +306,10 @@ vim.api.nvim_create_autocmd("BufEnter", {
 
     vim.schedule(function()
       for _, win in ipairs(vim.api.nvim_list_wins()) do
-        local cfg = vim.api.nvim_win_get_config(win)
-
-        if cfg.relative ~= "" then
-          goto continue
-        end
-
         local buf = vim.api.nvim_win_get_buf(win)
         if vim.bo[buf].filetype ~= "NvimTree" then
           pcall(vim.api.nvim_win_close, win, true)
         end
-
-        ::continue::
       end
     end)
   end,
@@ -310,10 +332,7 @@ vim.api.nvim_create_user_command("Q", function()
 end, {})
 
 vim.cmd([[
-  cnoreabbrev <expr> q
-    \ getcmdtype() == ':' && getcmdline() == 'q'
-    \ ? 'Q'
-    \ : 'q'
+  cnoreabbrev <expr> q getcmdtype() == ':' && getcmdline() == 'q' ? 'Q' : 'q'
 ]])
 
 -- ==================================================
@@ -386,32 +405,3 @@ vim.cmd([[
   cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
   cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
-
--- ==================================================
--- Prevent blank buffer + editor from reappearing
--- ==================================================
-
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function()
-    local buf = vim.api.nvim_get_current_buf()
-
-    if vim.api.nvim_buf_get_name(buf) ~= "" then return end
-    if vim.bo[buf].buftype ~= "" then return end
-    if vim.bo[buf].filetype ~= "" then return end
-
-    for _, b in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-      if vim.api.nvim_buf_is_loaded(b.bufnr)
-        and vim.bo[b.bufnr].buftype == ""
-        and vim.bo[b.bufnr].filetype ~= "NvimTree"
-      then
-        return
-      end
-    end
-
-    local ok, api = pcall(require, "nvim-tree.api")
-    if ok then
-      api.tree.open()
-      api.tree.focus()
-    end
-  end,
-})
