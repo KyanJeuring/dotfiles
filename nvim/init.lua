@@ -457,6 +457,8 @@ vim.cmd([[
 -- ==================================================
 
 local function open_keys_help()
+  local PAD_X = 2  -- horizontal padding (spaces)
+  local PAD_Y = 1  -- vertical padding (lines)
   local lines = {
     "[Keybindings Overview]",
     "",
@@ -500,14 +502,30 @@ local function open_keys_help()
   }
 
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  local padded = {}
+
+    for _ = 1, PAD_Y do
+      table.insert(padded, "")
+    end
+
+    local prefix = string.rep(" ", PAD_X)
+    for _, line in ipairs(lines) do
+      table.insert(padded, prefix .. line)
+    end
+
+    for _ = 1, PAD_Y do
+      table.insert(padded, "")
+    end
+
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, padded)
+
   vim.bo[buf].modifiable = false
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].filetype = "help"
   vim.bo[buf].readonly = true
 
-  local width = 60
-  local height = #lines + 2
+  local width  = 60 + PAD_X * 2
+  local height = #padded + 1
   local ui = vim.api.nvim_list_uis()[1]
 
   local cmd_height = vim.o.cmdheight + (vim.o.laststatus > 0 and 1 or 0)
