@@ -38,11 +38,9 @@ vim.opt.confirm = true
 if vim.env.SSH_TTY then
   vim.opt.mouse = ""
   vim.opt.updatetime = 300
+  vim.opt.cursorline = false
+  vim.opt.lazyredraw = true
 end
-
--- Leader key
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
 
 -- ==================================================
 -- Windows shell configuration (Git Bash)
@@ -115,17 +113,19 @@ vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 -- Highlight active window (clarifies resize target)
 -- ==================================================
 
-vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
-  callback = function()
-    vim.wo.cursorline = true
-  end,
-})
+if not vim.env.SSH_TTY then
+  vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+    callback = function()
+      vim.wo.cursorline = true
+    end,
+  })
 
-vim.api.nvim_create_autocmd("WinLeave", {
-  callback = function()
-    vim.wo.cursorline = false
-  end,
-})
+  vim.api.nvim_create_autocmd("WinLeave", {
+    callback = function()
+      vim.wo.cursorline = false
+    end,
+  })
+end
 
 -- ==================================================
 -- Theme
