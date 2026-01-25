@@ -21,7 +21,6 @@ vim.opt.mouse = "a"
 -- ==================================================
 
 vim.opt.confirm = true
-vim.opt.hidden = false
 
 -- Reduce redraw overhead over SSH
 if vim.env.SSH_TTY then
