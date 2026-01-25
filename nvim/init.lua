@@ -386,3 +386,32 @@ vim.cmd([[
   cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
   cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
+
+-- ==================================================
+-- Prevent blank buffer + editor from reappearing
+-- ==================================================
+
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+
+    if vim.api.nvim_buf_get_name(buf) ~= "" then return end
+    if vim.bo[buf].buftype ~= "" then return end
+    if vim.bo[buf].filetype ~= "" then return end
+
+    for _, b in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if vim.api.nvim_buf_is_loaded(b.bufnr)
+        and vim.bo[b.bufnr].buftype == ""
+        and vim.bo[b.bufnr].filetype ~= "NvimTree"
+      then
+        return
+      end
+    end
+
+    local ok, api = pcall(require, "nvim-tree.api")
+    if ok then
+      api.tree.open()
+      api.tree.focus()
+    end
+  end,
+})
