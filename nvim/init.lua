@@ -60,6 +60,25 @@ require("plugins")
 
 vim.cmd.colorscheme("onedark")
 
+-- Bufferline / NvimTree background alignment
+local function fix_tree_bufferline_bg()
+  local tree_bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
+
+  if not tree_bg then
+    return
+  end
+
+  vim.api.nvim_set_hl(0, "BufferLineFill", { bg = tree_bg })
+  vim.api.nvim_set_hl(0, "BufferLineOffset", { bg = tree_bg })
+  vim.api.nvim_set_hl(0, "BufferLineTabClose", { bg = tree_bg })
+end
+
+fix_tree_bufferline_bg()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = fix_tree_bufferline_bg,
+})
+
 -- ==================================================
 -- nvim-tree color overrides
 -- ==================================================
