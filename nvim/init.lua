@@ -39,7 +39,6 @@ if vim.env.SSH_TTY then
   vim.opt.mouse = ""
   vim.opt.updatetime = 300
   vim.opt.cursorline = false
-  vim.opt.lazyredraw = true
 end
 
 -- ==================================================
