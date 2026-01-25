@@ -44,6 +44,9 @@ require("lazy").setup({
           diagnostics = false,
           close_command = "bdelete %d",
           right_mouse_command = "bdelete %d",
+          custom_filter = function(bufnr)
+            return vim.bo[bufnr].buftype ~= "terminal"
+          end,
         },
       })
     end,
@@ -61,7 +64,20 @@ require("lazy").setup({
       local api = require("nvim-tree.api")
 
       require("nvim-tree").setup({
-        view = { width = 30 },
+        view = {
+          width = 30,
+          float = {
+            enable = true,
+            open_win_config = {
+              relative = "editor",
+              border = "rounded",
+              width = 30,
+              height = 40,
+              row = 1,
+              col = 1,
+            },
+          },
+        },
 
         on_attach = function(bufnr)
           local function open_node()
@@ -69,7 +85,6 @@ require("lazy").setup({
             if not node or node.type ~= "file" then return end
 
             vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
-            api.tree.close()
           end
 
           vim.keymap.set("n", "<CR>", open_node, {
