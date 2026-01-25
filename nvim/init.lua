@@ -17,9 +17,15 @@ vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
 -- ==================================================
--- SAFETY
+-- Color scheme
 -- ==================================================
 
+local ORANGE = "#ff7500"
+local WHITE  = "#e6e6e6"
+
+-- ==================================================
+-- SAFETY
+-- ==================================================
 vim.opt.confirm = true
 
 -- Reduce redraw overhead over SSH
@@ -96,11 +102,37 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 -- ==================================================
--- nvim-tree color overrides
+-- Active tab styling
 -- ==================================================
 
-local ORANGE = "#ff7500"
-local WHITE  = "#e6e6e6"
+local function set_bufferline_active_tab()
+  vim.api.nvim_set_hl(0, "BufferLineBufferSelected", {
+    fg = ORANGE,
+    bg = "NONE",
+    bold = true,
+    italic = false,
+  })
+
+  vim.api.nvim_set_hl(0, "BufferLineCloseButtonSelected", {
+    fg = ORANGE,
+    bg = "NONE",
+  })
+
+  vim.api.nvim_set_hl(0, "BufferLineSeparatorSelected", {
+    fg = "NONE",
+    bg = "NONE",
+  })
+end
+
+set_bufferline_active_tab()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_bufferline_active_tab,
+})
+
+-- ==================================================
+-- nvim-tree color overrides
+-- ==================================================
 
 local function set_tree_colors()
   vim.schedule(function()
