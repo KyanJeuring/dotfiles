@@ -130,24 +130,20 @@ end, { silent = true })
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
--- BUFFER TABS
+-- BUFFER / TAB MANAGEMENT
 -- ==================================================
 
-vim.keymap.set("n", "<leader>bn", ":bnext<CR>",     { silent = true })
-vim.keymap.set("n", "<leader>bp", ":bprevious<CR>",{ silent = true })
-vim.keymap.set("n", "<leader>bc", function()
+-- Core logic: close a "tab" (buffer) like a browser
+local function close_buffer_tab()
   local win = vim.api.nvim_get_current_win()
   local cur = vim.api.nvim_get_current_buf()
 
-  -- If we're not on a normal file buffer, just try to delete it normally.
+  -- Non-file buffers → normal delete
   if vim.bo[cur].buftype ~= "" then
     vim.cmd("confirm bdelete")
     return
   end
 
-  -- Pick a replacement buffer:
-  -- 1) alternate buffer (#) if it's a normal listed file buffer
-  -- 2) otherwise any other listed normal file buffer
   local function is_good_buf(b)
     return b
       and b > 0
@@ -157,6 +153,7 @@ vim.keymap.set("n", "<leader>bc", function()
       and vim.bo[b].filetype ~= "NvimTree"
   end
 
+  -- Prefer alternate buffer
   local repl = vim.fn.bufnr("#")
   if not is_good_buf(repl) then
     repl = nil
@@ -168,7 +165,7 @@ vim.keymap.set("n", "<leader>bc", function()
     end
   end
 
-  -- If no replacement file buffer exists, delete and focus the tree.
+  -- Last file → delete and focus tree
   if not repl then
     vim.cmd("confirm bdelete " .. cur)
     local ok, api = pcall(require, "nvim-tree.api")
@@ -176,28 +173,30 @@ vim.keymap.set("n", "<leader>bc", function()
     return
   end
 
-  -- Force the editor window to show the replacement buffer FIRST,
-  -- so focus never falls into NvimTree after deletion.
+  -- Switch first, then delete
   vim.api.nvim_win_set_buf(win, repl)
-
-  -- Now delete the old buffer (with confirm prompts if modified).
   local ok = pcall(vim.cmd, "confirm bdelete " .. cur)
-  if not ok then
-    -- If user cancelled, put the original buffer back in the same window.
-    if vim.api.nvim_buf_is_valid(cur) then
-      vim.api.nvim_win_set_buf(win, cur)
-    end
+  if not ok and vim.api.nvim_buf_is_valid(cur) then
+    vim.api.nvim_win_set_buf(win, cur)
   end
-end, { silent = true })
+end
+
+-- Keymaps
+vim.keymap.set("n", "<leader>bn", ":bnext<CR>", { silent = true })
+vim.keymap.set("n", "<leader>bp", ":bprevious<CR>", { silent = true })
+vim.keymap.set("n", "<leader>bc", close_buffer_tab, { silent = true })
 
 vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
 vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
 vim.keymap.set("n", "<leader>3", ":buffer 3<CR>")
 
--- When no file buffers remain, focus NvimTree and remove empty buffer
+-- ==================================================
+-- EMPTY BUFFER / WINDOW CLEANUP
+-- ==================================================
+
+-- Focus tree when no file buffers remain
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
-    -- Check if any normal file buffers exist
     for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
       if vim.api.nvim_buf_is_loaded(buf.bufnr)
         and vim.bo[buf.bufnr].buftype == ""
@@ -207,16 +206,8 @@ vim.api.nvim_create_autocmd("BufEnter", {
       end
     end
 
-    -- If we are in an empty buffer, clean it up and focus tree
-    local cur = vim.api.nvim_get_current_buf()
-    if vim.bo[cur].buftype == "" and vim.bo[cur].filetype == "" then
-      pcall(vim.cmd, "bdelete " .. cur)
-    end
-
     local ok, api = pcall(require, "nvim-tree.api")
-    if ok then
-      api.tree.focus()
-    end
+    if ok then api.tree.focus() end
   end,
 })
 
@@ -224,7 +215,6 @@ vim.api.nvim_create_autocmd("BufEnter", {
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
     local buf = vim.api.nvim_get_current_buf()
-
     if vim.api.nvim_buf_get_name(buf) == ""
       and vim.bo[buf].buftype == ""
       and vim.bo[buf].filetype == ""
@@ -234,20 +224,18 @@ vim.api.nvim_create_autocmd("BufEnter", {
   end,
 })
 
--- Close the empty editor window when only NvimTree remains
+-- Close empty editor window when only tree remains
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
-    -- Check if any normal file buffers exist
     for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
       if vim.api.nvim_buf_is_loaded(buf.bufnr)
         and vim.bo[buf.bufnr].buftype == ""
         and vim.bo[buf.bufnr].filetype ~= "NvimTree"
       then
-        return -- at least one file buffer exists → keep editor window
+        return
       end
     end
 
-    -- No file buffers → close non-tree windows
     vim.schedule(function()
       for _, win in ipairs(vim.api.nvim_list_wins()) do
         local buf = vim.api.nvim_win_get_buf(win)
@@ -258,3 +246,23 @@ vim.api.nvim_create_autocmd("BufEnter", {
     end)
   end,
 })
+
+-- ==================================================
+-- Make :q behave like closing a tab
+-- ==================================================
+
+vim.api.nvim_create_user_command("Q", function()
+  local buf = vim.api.nvim_get_current_buf()
+  local bt = vim.bo[buf].buftype
+  local ft = vim.bo[buf].filetype
+
+  if bt == "" and ft ~= "NvimTree" then
+    close_buffer_tab()
+  else
+    vim.cmd("confirm quit")
+  end
+end, {})
+
+vim.cmd([[
+  cnoreabbrev <expr> q getcmdtype() == ':' && getcmdline() == 'q' ? 'Q' : 'q'
+]])
