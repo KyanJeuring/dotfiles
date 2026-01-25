@@ -3,7 +3,6 @@
 -- ==================================================
 
 vim.opt.number = true
-vim.opt.relativenumber = true
 
 vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
@@ -18,7 +17,7 @@ vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
 -- ==================================================
--- Colors
+-- Color scheme
 -- ==================================================
 
 local ORANGE = "#ff7500"
@@ -27,14 +26,15 @@ local WHITE  = "#e6e6e6"
 -- ==================================================
 -- SAFETY
 -- ==================================================
-
 vim.opt.confirm = true
 
+-- Reduce redraw overhead over SSH
 if vim.env.SSH_TTY then
   vim.opt.mouse = ""
   vim.opt.updatetime = 300
 end
 
+-- Leader key
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
@@ -44,8 +44,8 @@ vim.g.maplocalleader = " "
 
 if vim.fn.has("win32") == 1 then
   vim.env.PATH = vim.env.PATH
-    .. ";C:\\Program Files\\Git\\bin"
-    .. ";C:\\Program Files\\Git\\cmd"
+  .. ";C:\\Program Files\\Git\\bin"
+  .. ";C:\\Program Files\\Git\\cmd"
   vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
   vim.opt.shellcmdflag = "-lc"
   vim.opt.shellredir = ">"
@@ -67,6 +67,24 @@ require("plugins")
 vim.cmd.colorscheme("onedark")
 
 -- ==================================================
+-- ORANGE title for floating Keys window
+-- ==================================================
+
+vim.api.nvim_set_hl(0, "KeysHelpTitle", {
+  fg = ORANGE,
+  bold = true,
+})
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = function()
+    vim.api.nvim_set_hl(0, "KeysHelpTitle", {
+      fg = ORANGE,
+      bold = true,
+    })
+  end,
+})
+
+-- ==================================================
 -- Window separators (remove)
 -- ==================================================
 
@@ -79,23 +97,29 @@ local function remove_window_separators()
 end
 
 remove_window_separators()
-vim.api.nvim_create_autocmd("ColorScheme", { callback = remove_window_separators })
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = remove_window_separators,
+})
 
 -- ==================================================
--- Bufferline / Tree background alignment
+-- Bufferline / NvimTree background alignment
 -- ==================================================
 
 local function fix_tree_bufferline_bg()
-  local bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
-  if not bg then return end
+  local tree_bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
+  if not tree_bg then return end
 
-  vim.api.nvim_set_hl(0, "BufferLineFill", { bg = bg })
-  vim.api.nvim_set_hl(0, "BufferLineOffset", { bg = bg })
-  vim.api.nvim_set_hl(0, "BufferLineTabClose", { bg = bg })
+  vim.api.nvim_set_hl(0, "BufferLineFill", { bg = tree_bg })
+  vim.api.nvim_set_hl(0, "BufferLineOffset", { bg = tree_bg })
+  vim.api.nvim_set_hl(0, "BufferLineTabClose", { bg = tree_bg })
 end
 
 fix_tree_bufferline_bg()
-vim.api.nvim_create_autocmd("ColorScheme", { callback = fix_tree_bufferline_bg })
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = fix_tree_bufferline_bg,
+})
 
 -- ==================================================
 -- Active tab styling
@@ -106,14 +130,18 @@ local function set_bufferline_active_tab()
     fg = ORANGE,
     bg = "NONE",
     bold = true,
+    italic = false,
   })
 end
 
 set_bufferline_active_tab()
-vim.api.nvim_create_autocmd("ColorScheme", { callback = set_bufferline_active_tab })
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_bufferline_active_tab,
+})
 
 -- ==================================================
--- NvimTree colors
+-- nvim-tree color overrides
 -- ==================================================
 
 local function set_tree_colors()
@@ -123,6 +151,7 @@ local function set_tree_colors()
     vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
     vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
     vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
+    vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
   end)
 end
 
@@ -158,23 +187,26 @@ vim.keymap.set("n", "<leader>t", function()
   vim.cmd("terminal")
   term_buf = vim.api.nvim_get_current_buf()
   vim.cmd("startinsert")
-end)
+end, { silent = true })
 
 vim.keymap.set("n", "<leader>T", function()
   local win = find_term_win()
   if not win then return end
   vim.api.nvim_set_current_win(win)
-  vim.api.nvim_win_set_height(
-    win,
-    term_expanded and SMALL_HEIGHT or math.floor(vim.o.lines * EXPAND_RATIO)
-  )
-  term_expanded = not term_expanded
-end)
 
-vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]])
+  if term_expanded then
+    vim.api.nvim_win_set_height(win, SMALL_HEIGHT)
+  else
+    vim.api.nvim_win_set_height(win, math.floor(vim.o.lines * EXPAND_RATIO))
+  end
+
+  term_expanded = not term_expanded
+end, { silent = true })
+
+vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
--- Buffer / tab management
+-- BUFFER / TAB MANAGEMENT
 -- ==================================================
 
 local function close_buffer_tab()
@@ -186,35 +218,85 @@ local function close_buffer_tab()
     return
   end
 
+  local function is_good_buf(b)
+    return b
+      and b > 0
+      and vim.fn.buflisted(b) == 1
+      and vim.api.nvim_buf_is_loaded(b)
+      and vim.bo[b].buftype == ""
+      and vim.bo[b].filetype ~= "NvimTree"
+  end
+
   local repl = vim.fn.bufnr("#")
-  if repl <= 0 or not vim.fn.buflisted(repl) then
-    for _, b in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-      if b.bufnr ~= cur and vim.bo[b.bufnr].buftype == "" then
-        repl = b.bufnr
+  if not is_good_buf(repl) then
+    repl = nil
+    for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if info.bufnr ~= cur and is_good_buf(info.bufnr) then
+        repl = info.bufnr
         break
       end
     end
   end
 
-  if not repl or repl == cur then
-    vim.cmd("confirm bdelete")
-    require("nvim-tree.api").tree.focus()
+  if not repl then
+    vim.cmd("confirm bdelete " .. cur)
+    local ok, api = pcall(require, "nvim-tree.api")
+    if ok then api.tree.focus() end
     return
   end
 
   vim.api.nvim_win_set_buf(win, repl)
-  vim.cmd("confirm bdelete " .. cur)
+  local ok = pcall(vim.cmd, "confirm bdelete " .. cur)
+  if not ok and vim.api.nvim_buf_is_valid(cur) then
+    vim.api.nvim_win_set_buf(win, cur)
+  end
 end
 
-vim.keymap.set("n", "<Tab>", ":bnext<CR>")
-vim.keymap.set("n", "<S-Tab>", ":bprevious<CR>")
-vim.keymap.set("n", "gt", ":bnext<CR>")
-vim.keymap.set("n", "gT", ":bprevious<CR>")
-vim.keymap.set("n", "<leader>x", close_buffer_tab)
+vim.keymap.set("n", "<Tab>", ":bnext<CR>", { silent = true })
+vim.keymap.set("n", "<S-Tab>", ":bprevious<CR>", { silent = true })
+vim.keymap.set("n", "gt", ":bnext<CR>", { silent = true })
+vim.keymap.set("n", "gT", ":bprevious<CR>", { silent = true })
+vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 
--- =================================================
--- Override :q to close buffer/tab first
 -- ==================================================
+-- EMPTY BUFFER / WINDOW CLEANUP
+-- ==================================================
+
+-- Close empty editor window when only tree remains
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+      if vim.api.nvim_buf_is_loaded(buf.bufnr)
+        and vim.bo[buf.bufnr].buftype == ""
+        and vim.bo[buf.bufnr].filetype ~= "NvimTree"
+      then
+        return
+      end
+    end
+
+    vim.schedule(function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local cfg = vim.api.nvim_win_get_config(win)
+
+        if cfg.relative ~= "" then
+          goto continue
+        end
+
+        local buf = vim.api.nvim_win_get_buf(win)
+        if vim.bo[buf].filetype ~= "NvimTree" then
+          pcall(vim.api.nvim_win_close, win, true)
+        end
+
+        ::continue::
+      end
+    end)
+  end,
+})
+
+-- ==================================================
+-- Make :q behave like closing a tab
+-- ==================================================
+
 vim.api.nvim_create_user_command("Q", function()
   local buf = vim.api.nvim_get_current_buf()
   local bt = vim.bo[buf].buftype
@@ -238,11 +320,12 @@ vim.cmd([[
 -- Floating Keybindings Overview
 -- ==================================================
 
-vim.api.nvim_set_hl(0, "KeysHelpTitle", { fg = ORANGE, bold = true })
-
 local function open_keys_help()
   local lines = {
     "=== Keybindings Overview ===",
+    "",
+    "Keybindings Overview:",
+    "  :keys, :keybindings, :bindings, :kb, ?  → Open this help window",
     "",
     "Tabs (files):",
     "  Tab / Shift-Tab     → Next / Previous tab",
@@ -271,27 +354,35 @@ local function open_keys_help()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "help"
+  vim.bo[buf].readonly = true
 
+  local width = 60
+  local height = #lines + 2
   local ui = vim.api.nvim_list_uis()[1]
+
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
-    width = 60,
-    height = #lines + 2,
-    row = math.floor((ui.height - (#lines + 2)) / 2),
-    col = math.floor((ui.width - 60) / 2),
+    width = width,
+    height = height,
+    row = math.floor((ui.height - height) / 2),
+    col = math.floor((ui.width - width) / 2),
     style = "minimal",
     border = "rounded",
   })
 
   vim.api.nvim_buf_add_highlight(buf, -1, "KeysHelpTitle", 0, 0, -1)
-  vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = buf })
-  vim.keymap.set("n", "<Esc>", "<cmd>close<CR>", { buffer = buf })
+
+  vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = buf, silent = true })
+  vim.keymap.set("n", "<Esc>", "<cmd>close<CR>", { buffer = buf, silent = true })
 end
 
 vim.api.nvim_create_user_command("Keys", open_keys_help, {})
 
 vim.cmd([[
-  cnoreabbrev <expr> keys getcmdtype()==':' && getcmdline()=='keys' ? 'Keys' : 'keys'
-  cnoreabbrev <expr> kb   getcmdtype()==':' && getcmdline()=='kb'   ? 'Keys' : 'kb'
-  cnoreabbrev <expr> ?    getcmdtype()==':' && getcmdline()=='?'    ? 'Keys' : '?'
+  cnoreabbrev <expr> keys      getcmdtype()==':' && getcmdline()=='keys'      ? 'Keys' : 'keys'
+  cnoreabbrev <expr> keybinds  getcmdtype()==':' && getcmdline()=='keybinds'  ? 'Keys' : 'keybinds'
+  cnoreabbrev <expr> bindings  getcmdtype()==':' && getcmdline()=='bindings'  ? 'Keys' : 'bindings'
+  cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
+  cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
