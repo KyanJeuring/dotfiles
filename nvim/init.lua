@@ -133,36 +133,33 @@ vim.cmd.colorscheme("onedark")
 -- Command-line styling
 -- ==================================================
 
-local CMD_BG     = "#21252b"
-local CMD_ORANGE = "#ff7500"
-local CMD_ERROR  = "#e06c75"
-local CMD_WARN   = "#e5c07b"
+local CMD_BG = "#21252b"
+local CMD_FG = "#abb2bf"
 
 local function set_cmdline_colors()
   vim.api.nvim_set_hl(0, "Cmdline", {
-    fg = CMD_ORANGE,
+    fg = CMD_FG,
     bg = CMD_BG,
   })
 
   vim.api.nvim_set_hl(0, "CmdlinePrompt", {
-    fg = CMD_ORANGE,
+    fg = CMD_FG,
     bg = CMD_BG,
-    bold = true,
+    bold = false,
   })
 
   vim.api.nvim_set_hl(0, "MsgArea", {
-    fg = "#abb2bf",
+    fg = CMD_FG,
     bg = CMD_BG,
   })
 
   vim.api.nvim_set_hl(0, "ErrorMsg", {
-    fg = CMD_ERROR,
+    fg = CMD_FG,
     bg = CMD_BG,
-    bold = true,
   })
 
   vim.api.nvim_set_hl(0, "WarningMsg", {
-    fg = CMD_WARN,
+    fg = CMD_FG,
     bg = CMD_BG,
   })
 end
