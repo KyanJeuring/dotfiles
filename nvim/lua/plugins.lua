@@ -107,6 +107,14 @@ require("lazy").setup({
         git = { enable = false },
       })
 
+      -- Lock NvimTree window width
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "NvimTree",
+        callback = function()
+          vim.opt_local.winfixwidth = true
+        end,
+      })
+
       -- Existing keymaps (unchanged)
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
       vim.keymap.set("n", "<leader>f", function() api.tree.focus() end, { silent = true })
