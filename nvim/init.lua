@@ -82,21 +82,45 @@ vim.keymap.set("n", "<C-j>", "<C-w>j")
 vim.keymap.set("n", "<C-k>", "<C-w>k")
 vim.keymap.set("n", "<C-l>", "<C-w>l")
 
--- Window resizing
+-- Smart window resizing (directionally correct)
+local function resize_height(delta)
+  local win = vim.api.nvim_get_current_win()
+  local row = vim.fn.win_screenpos(win)[1]
+  local total = vim.o.lines
+
+  if row > total / 2 then
+    delta = -delta
+  end
+
+  vim.api.nvim_win_set_height(win, vim.api.nvim_win_get_height(win) + delta)
+end
+
+local function resize_width(delta)
+  local win = vim.api.nvim_get_current_win()
+  local col = vim.fn.win_screenpos(win)[2]
+  local total = vim.o.columns
+
+  if col > total / 2 then
+    delta = -delta
+  end
+
+  vim.api.nvim_win_set_width(win, vim.api.nvim_win_get_width(win) + delta)
+end
+
 vim.keymap.set("n", "<C-Up>", function()
-  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) - 2)
+  resize_height(-2)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Down>", function()
-  vim.api.nvim_win_set_height(0, vim.api.nvim_win_get_height(0) + 2)
+  resize_height(2)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Left>", function()
-  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) - 4)
+  resize_width(-4)
 end, { silent = true })
 
 vim.keymap.set("n", "<C-Right>", function()
-  vim.api.nvim_win_set_width(0, vim.api.nvim_win_get_width(0) + 4)
+  resize_width(4)
 end, { silent = true })
 
 -- Duplicate line / selection
