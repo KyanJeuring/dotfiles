@@ -79,10 +79,11 @@ require("lazy").setup({
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       local NORMAL_BG  = "#2c323c"
-      local INSERT_BG  = "#ff7500"
+      local INSERT_BG  = "#ff7700"
       local VISUAL_BG  = "#61afef"
       local REPLACE_BG = "#e06c75"
       local COMMAND_BG = "#98c379"
+      local TERMINAL_BG = "#e5c07b"
 
       local FG_LIGHT   = "#d7dae0"
       local FG_DARK    = "#21252b"
@@ -111,6 +112,9 @@ require("lazy").setup({
             },
             command = {
               a = { fg = FG_DARK, bg = COMMAND_BG, gui = "bold" },
+            },
+            terminal = {
+              a = { fg = FG_DARK, bg = TERMINAL_BG, gui = "bold" },
             },
             inactive = {
               a = { fg = "#7f848e", bg = BG_DARK },
