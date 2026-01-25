@@ -108,6 +108,22 @@ vim.keymap.set({ "n", "v" }, "L", "$")
 vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 
 -- ==================================================
+-- Highlight active window (clarifies resize target)
+-- ==================================================
+
+vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+  callback = function()
+    vim.wo.cursorline = true
+  end,
+})
+
+vim.api.nvim_create_autocmd("WinLeave", {
+  callback = function()
+    vim.wo.cursorline = false
+  end,
+})
+
+-- ==================================================
 -- Theme
 -- ==================================================
 
