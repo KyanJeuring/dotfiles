@@ -335,20 +335,6 @@ vim.cmd([[
 -- ==================================================
 -- :Keys — keybindings overview
 -- ==================================================
-vim.cmd([[
-  " Friendly aliases for keybindings overview
-  cnoreabbrev <expr> keys
-        \ getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
-  cnoreabbrev <expr> keybinds
-        \ getcmdtype() == ':' && getcmdline() == 'keybinds' ? 'Keys' : 'keybinds'
-  cnoreabbrev <expr> bindings
-        \ getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
-  cnoreabbrev <expr> kb
-        \ getcmdtype() == ':' && getcmdline() == 'kb' ? 'Keys' : 'kb'
-  cnoreabbrev <expr> ?
-        \ getcmdtype() == ':' && getcmdline() == '?' ? 'Keys' : '?'
-]])
-
 vim.api.nvim_create_user_command("Keys", function()
   local lines = {
     "",
@@ -386,3 +372,17 @@ vim.api.nvim_create_user_command("Keys", function()
   vim.bo.filetype = "help"
   vim.cmd("setlocal nobuflisted")
 end, {})
+
+vim.cmd([[
+  " Friendly aliases for keybindings overview
+  cnoreabbrev <expr> keys
+        \ getcmdtype() == ':' && getcmdline() == 'keys' ? 'Keys' : 'keys'
+  cnoreabbrev <expr> keybinds
+        \ getcmdtype() == ':' && getcmdline() == 'keybinds' ? 'Keys' : 'keybinds'
+  cnoreabbrev <expr> bindings
+        \ getcmdtype() == ':' && getcmdline() == 'bindings' ? 'Keys' : 'bindings'
+  cnoreabbrev <expr> kb
+        \ getcmdtype() == ':' && getcmdline() == 'kb' ? 'Keys' : 'kb'
+  cnoreabbrev <expr> ?
+        \ getcmdtype() == ':' && getcmdline() == '?' ? 'Keys' : '?'
+]])
