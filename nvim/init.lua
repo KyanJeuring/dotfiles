@@ -18,6 +18,10 @@ vim.opt.signcolumn = "yes"
 vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
+vim.opt.cmdheight = 1
+vim.opt.laststatus = 3
+vim.opt.shortmess:append("c")
+
 -- ==================================================
 -- Color scheme
 -- ==================================================
