@@ -510,12 +510,17 @@ local function open_keys_help()
   local height = #lines + 2
   local ui = vim.api.nvim_list_uis()[1]
 
+  local cmd_height = vim.o.cmdheight + (vim.o.laststatus > 0 and 1 or 0)
+
+  local row = math.floor((ui.height - height) / 2) - math.floor(cmd_height / 2)
+  local col = math.floor((ui.width  - width)  / 2)
+
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = width,
     height = height,
-    row = math.floor((ui.height - height) / 2),
-    col = math.floor((ui.width - width) / 2),
+    row = math.max(row, 0),
+    col = math.max(col, 0),
     style = "minimal",
     border = "rounded",
   })
