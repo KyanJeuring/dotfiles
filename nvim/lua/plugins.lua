@@ -61,7 +61,7 @@ require("lazy").setup({
               separator = false,
             },
           },
-          
+
           custom_filter = function(bufnr)
             return vim.bo[bufnr].buftype ~= "terminal"
           end,
@@ -100,11 +100,18 @@ require("lazy").setup({
         on_attach = function(bufnr)
           local function open_node()
             local node = api.tree.get_node_under_cursor()
-            if not node or node.type ~= "file" then
+            if not node then
               return
             end
 
-            vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
+            if node.type == "directory" then
+              api.node.open.edit()
+              return
+            end
+
+            if node.type == "file" then
+              vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
+            end
           end
 
           vim.keymap.set("n", "<CR>", open_node, {
