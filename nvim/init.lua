@@ -92,19 +92,19 @@ local function resize_height(delta)
     delta = -delta
   end
 
-  vim.api.nvim_win_set_height(win, vim.api.nvim_win_get_height(win) + delta)
+  vim.api.nvim_win_set_height(
+    win,
+    vim.api.nvim_win_get_height(win) + delta
+  )
 end
 
 local function resize_width(delta)
   local win = vim.api.nvim_get_current_win()
-  local col = vim.fn.win_screenpos(win)[2]
-  local total = vim.o.columns
 
-  if col > total / 2 then
-    delta = -delta
-  end
-
-  vim.api.nvim_win_set_width(win, vim.api.nvim_win_get_width(win) + delta)
+  vim.api.nvim_win_set_width(
+    win,
+    vim.api.nvim_win_get_width(win) + delta
+  )
 end
 
 vim.keymap.set("n", "<C-Up>", function()
