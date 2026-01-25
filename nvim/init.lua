@@ -16,8 +16,12 @@ vim.opt.signcolumn = "yes"
 vim.opt.termguicolors = true
 vim.opt.mouse = "a"
 
--- Warn before abandoning modified buffers
+-- ==================================================
+-- SAFETY
+-- ==================================================
+
 vim.opt.confirm = true
+vim.opt.hidden = false
 
 -- Reduce redraw overhead over SSH
 if vim.env.SSH_TTY then
@@ -46,15 +50,6 @@ if vim.fn.has("win32") == 1 then
 end
 
 -- ==================================================
--- SAFETY
--- ==================================================
-
--- Warn before abandoning modified buffers
-vim.opt.confirm = true
-
--- Do not hide buffers by default
-vim.opt.hidden = false
--- ==================================================
 -- Plugins
 -- ==================================================
 
@@ -67,134 +62,82 @@ require("plugins")
 vim.cmd.colorscheme("onedark")
 
 -- ==================================================
--- nvim-tree color overrides (robust against onedark)
+-- nvim-tree color overrides
 -- ==================================================
 
 local ORANGE = "#ff7500"
-local WHITE = "#e6e6e6"
+local WHITE  = "#e6e6e6"
 
 local function set_tree_colors()
-  -- onedark re-applies highlights late, so schedule this
   vim.schedule(function()
-    -- Folders
     vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
     vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
     vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
     vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
-    vim.api.nvim_set_hl(0, "NvimTreeSymlinkFolderName",{ fg = ORANGE })
 
-    -- Files
     vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
-    vim.api.nvim_set_hl(0, "NvimTreeExecFile",         { fg = WHITE })
-    vim.api.nvim_set_hl(0, "NvimTreeSpecialFile",      { fg = WHITE })
     vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
-
-    -- Tree UI
-    vim.api.nvim_set_hl(0, "NvimTreeIndentMarker",     { fg = ORANGE })
   end)
 end
 
--- Apply immediately
 set_tree_colors()
-
--- Re-apply after any colorscheme change
-vim.api.nvim_create_autocmd("ColorScheme", {
-  callback = set_tree_colors,
-})
+vim.api.nvim_create_autocmd("ColorScheme", { callback = set_tree_colors })
 
 -- ==================================================
--- Terminal toggle (single instance)
+-- Terminal toggle
 -- ==================================================
 
-local term_buf = nil
-local term_win = nil
-local term_expanded = false
-
+local term_buf, term_expanded = nil, false
 local SMALL_HEIGHT = 15
 local EXPAND_RATIO = 1.5
 
--- Helper: find terminal window
 local function find_term_win()
-  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
-    return nil
-  end
-
+  if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then return nil end
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_buf(win) == term_buf then
-      return win
-    end
+    if vim.api.nvim_win_get_buf(win) == term_buf then return win end
   end
-
-  return nil
 end
 
--- Open / close terminal
 vim.keymap.set("n", "<leader>t", function()
   local win = find_term_win()
-
-  -- Close terminal
   if win then
     vim.api.nvim_buf_delete(term_buf, { force = true })
-    term_buf = nil
-    term_win = nil
-    term_expanded = false
+    term_buf, term_expanded = nil, false
     return
   end
 
-  -- Open terminal
-  if vim.bo.filetype == "NvimTree" then
-    vim.cmd("wincmd l")
-  end
-
+  if vim.bo.filetype == "NvimTree" then vim.cmd("wincmd l") end
   vim.cmd("belowright split")
   vim.cmd("resize " .. SMALL_HEIGHT)
   vim.cmd("terminal")
-
   term_buf = vim.api.nvim_get_current_buf()
-  term_win = vim.api.nvim_get_current_win()
-  term_expanded = false
-
   vim.cmd("startinsert")
 end, { silent = true })
 
--- Toggle terminal height
-local function toggle_terminal_height()
+vim.keymap.set("n", "<leader>T", function()
   local win = find_term_win()
-  if not win then
-    return
-  end
-
+  if not win then return end
   vim.api.nvim_set_current_win(win)
 
-  if not term_expanded then
-    -- Expand
-    local total_lines = vim.o.lines
-    local target = math.floor(total_lines * EXPAND_RATIO)
-    vim.api.nvim_win_set_height(win, target)
-    term_expanded = true
-  else
-    -- Shrink
+  if term_expanded then
     vim.api.nvim_win_set_height(win, SMALL_HEIGHT)
-    term_expanded = false
+  else
+    vim.api.nvim_win_set_height(win, math.floor(vim.o.lines * EXPAND_RATIO))
   end
-end
 
--- Normal mode
-vim.keymap.set("n", "<leader>T", toggle_terminal_height, { silent = true })
+  term_expanded = not term_expanded
+end, { silent = true })
 
--- Esc exits terminal insert mode
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { silent = true })
 
 -- ==================================================
--- Tabs management
+-- BUFFER TABS
 -- ==================================================
 
-vim.keymap.set("n", "<leader>tn", ":tabnext<CR>", { silent = true })
-vim.keymap.set("n", "<leader>tp", ":tabprevious<CR>", { silent = true })
-vim.keymap.set("n", "<leader>tc", ":tabclose<CR>", { silent = true })
+vim.keymap.set("n", "<leader>bn", ":bnext<CR>",     { silent = true })
+vim.keymap.set("n", "<leader>bp", ":bprevious<CR>",{ silent = true })
+vim.keymap.set("n", "<leader>bc", ":bdelete<CR>",  { silent = true })
 
-vim.keymap.set("n", "<leader>1", "1gt")
-vim.keymap.set("n", "<leader>2", "2gt")
-vim.keymap.set("n", "<leader>3", "3gt")
-
-vim.opt.showtabline = 1
+vim.keymap.set("n", "<leader>1", ":buffer 1<CR>")
+vim.keymap.set("n", "<leader>2", ":buffer 2<CR>")
+vim.keymap.set("n", "<leader>3", ":buffer 3<CR>")
