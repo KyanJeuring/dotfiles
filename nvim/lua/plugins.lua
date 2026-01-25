@@ -110,7 +110,7 @@ require("lazy").setup({
           add_trailing = true,
           icons = {
             webdev_colors = false,
-            git_placement = "none",
+            git_placement = "after",
             show = {
               file = false,
               folder = false,
