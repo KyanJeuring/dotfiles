@@ -3,6 +3,7 @@
 -- ==================================================
 
 vim.opt.showmode = false
+
 vim.opt.number = true
 
 vim.opt.expandtab = true
@@ -15,8 +16,6 @@ vim.opt.scrolloff = 8
 vim.opt.signcolumn = "yes"
 
 vim.opt.termguicolors = true
-vim.opt.showcmd = false
-vim.opt.lazyredraw = true
 vim.opt.mouse = "a"
 
 vim.opt.cmdheight = 1
@@ -24,7 +23,7 @@ vim.opt.laststatus = 3
 vim.opt.shortmess:append("c")
 
 -- ==================================================
--- Color constants
+-- Color scheme
 -- ==================================================
 
 local ORANGE = "#ff7500"
@@ -33,7 +32,6 @@ local WHITE  = "#e6e6e6"
 -- ==================================================
 -- SAFETY
 -- ==================================================
-
 vim.opt.confirm = true
 
 -- Reduce redraw overhead over SSH
@@ -41,8 +39,6 @@ if vim.env.SSH_TTY then
   vim.opt.mouse = ""
   vim.opt.updatetime = 300
   vim.opt.cursorline = false
-else
-  vim.opt.cursorline = true
 end
 
 -- ==================================================
@@ -58,8 +54,8 @@ vim.g.maplocalleader = " "
 
 if vim.fn.has("win32") == 1 then
   vim.env.PATH = vim.env.PATH
-    .. ";C:\\Program Files\\Git\\bin"
-    .. ";C:\\Program Files\\Git\\cmd"
+  .. ";C:\\Program Files\\Git\\bin"
+  .. ";C:\\Program Files\\Git\\cmd"
   vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
   vim.opt.shellcmdflag = "-lc"
   vim.opt.shellredir = ">"
@@ -78,23 +74,29 @@ require("plugins")
 -- Custom Keybindings
 -- ==================================================
 
+-- Save file
 vim.keymap.set({ "n", "i", "v" }, "<C-s>", function()
   vim.cmd("write")
 end, { silent = true, desc = "Save file" })
 
+-- Close / quit
 vim.keymap.set("n", "<C-q>", ":Q<CR>", { silent = true, desc = "Quit / close tab" })
 vim.keymap.set("n", "<leader>w", ":w<CR>", { silent = true, desc = "Save file" })
 
+-- Clear search highlight
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR><Esc>", { silent = true })
 
+-- Window navigation and resizing
 vim.keymap.set("n", "<C-h>", "<C-w>h")
 vim.keymap.set("n", "<C-j>", "<C-w>j")
 vim.keymap.set("n", "<C-k>", "<C-w>k")
 vim.keymap.set("n", "<C-l>", "<C-w>l")
 
+-- Duplicate line / selection
 vim.keymap.set("n", "<leader>d", "yyp", { desc = "Duplicate line" })
 vim.keymap.set("v", "<leader>d", "y`>p", { desc = "Duplicate selection" })
 
+-- Move lines up / down
 vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { silent = true })
 vim.keymap.set("n", "<A-k>", ":m .-2<CR>==", { silent = true })
 vim.keymap.set("i", "<A-j>", "<Esc>:m .+1<CR>==gi", { silent = true })
@@ -102,25 +104,103 @@ vim.keymap.set("i", "<A-k>", "<Esc>:m .-2<CR>==gi", { silent = true })
 vim.keymap.set("v", "<A-j>", ":m '>+1<CR>gv=gv", { silent = true })
 vim.keymap.set("v", "<A-k>", ":m '<-2<CR>gv=gv", { silent = true })
 
+-- Move to beginning and end of line
 vim.keymap.set({ "n", "v" }, "H", "^")
 vim.keymap.set({ "n", "v" }, "L", "$")
+
+-- Move to beginning and end of the file
 vim.keymap.set({ "n", "v" }, "K", "gg")
 vim.keymap.set({ "n", "v" }, "J", "G")
 
+-- Redo
 vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 
 -- ==================================================
--- Highlight helpers (definitions only)
+-- Highlight active window (clarifies resize target)
+-- ==================================================
+
+if not vim.env.SSH_TTY then
+  vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+    callback = function()
+      vim.wo.cursorline = true
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("WinLeave", {
+    callback = function()
+      vim.wo.cursorline = false
+    end,
+  })
+end
+
+-- ==================================================
+-- Theme
+-- ==================================================
+
+vim.cmd.colorscheme("onedark")
+
+-- ==================================================
+-- Command-line styling
 -- ==================================================
 
 local CMD_BG = "#21252b"
 local CMD_FG = "#abb2bf"
 
 local function set_cmdline_colors()
-  vim.api.nvim_set_hl(0, "Cmdline", { fg = CMD_FG, bg = CMD_BG })
-  vim.api.nvim_set_hl(0, "CmdlinePrompt", { fg = CMD_FG, bg = CMD_BG })
-  vim.api.nvim_set_hl(0, "MsgArea", { fg = CMD_FG, bg = CMD_BG })
+  vim.api.nvim_set_hl(0, "Cmdline", {
+    fg = CMD_FG,
+    bg = CMD_BG,
+  })
+
+  vim.api.nvim_set_hl(0, "CmdlinePrompt", {
+    fg = CMD_FG,
+    bg = CMD_BG,
+    bold = false,
+  })
+
+  vim.api.nvim_set_hl(0, "MsgArea", {
+    fg = CMD_FG,
+    bg = CMD_BG,
+  })
+
+  vim.api.nvim_set_hl(0, "ErrorMsg", {
+    fg = CMD_FG,
+    bg = CMD_BG,
+  })
+
+  vim.api.nvim_set_hl(0, "WarningMsg", {
+    fg = CMD_FG,
+    bg = CMD_BG,
+  })
 end
+
+set_cmdline_colors()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = set_cmdline_colors,
+})
+
+-- ==================================================
+-- ORANGE title for floating Keys window
+-- ==================================================
+
+vim.api.nvim_set_hl(0, "KeysHelpTitle", {
+  fg = ORANGE,
+  bold = true,
+})
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = function()
+    vim.api.nvim_set_hl(0, "KeysHelpTitle", {
+      fg = ORANGE,
+      bold = true,
+    })
+  end,
+})
+
+-- ==================================================
+-- Window separators (remove)
+-- ==================================================
 
 vim.opt.fillchars = vim.opt.fillchars
   + { vert = " ", vertleft = " ", vertright = " ", verthoriz = " " }
@@ -130,51 +210,67 @@ local function remove_window_separators()
   vim.api.nvim_set_hl(0, "VertSplit",   { fg = "NONE", bg = "NONE" })
 end
 
+remove_window_separators()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = remove_window_separators,
+})
+
+-- ==================================================
+-- Bufferline / NvimTree background alignment
+-- ==================================================
+
 local function fix_tree_bufferline_bg()
   local tree_bg = vim.api.nvim_get_hl(0, { name = "NvimTreeNormal", link = false }).bg
   if not tree_bg then return end
+
   vim.api.nvim_set_hl(0, "BufferLineFill", { bg = tree_bg })
   vim.api.nvim_set_hl(0, "BufferLineOffset", { bg = tree_bg })
   vim.api.nvim_set_hl(0, "BufferLineTabClose", { bg = tree_bg })
 end
+
+fix_tree_bufferline_bg()
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = fix_tree_bufferline_bg,
+})
+
+-- ==================================================
+-- Active tab styling
+-- ==================================================
 
 local function set_bufferline_active_tab()
   vim.api.nvim_set_hl(0, "BufferLineBufferSelected", {
     fg = ORANGE,
     bg = "NONE",
     bold = true,
+    italic = false,
   })
 end
 
-local function set_tree_colors()
-  vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
-  vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
-  vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
-  vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
-  vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
-  vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
-end
-
--- ==================================================
--- SINGLE ColorScheme hook (no flash)
--- ==================================================
+set_bufferline_active_tab()
 
 vim.api.nvim_create_autocmd("ColorScheme", {
-  callback = function()
-    set_cmdline_colors()
-    remove_window_separators()
-    set_bufferline_active_tab()
-    set_tree_colors()
-
-    -- Tree highlight exists slightly later
-    vim.schedule(fix_tree_bufferline_bg)
-
-    vim.api.nvim_set_hl(0, "KeysHelpTitle", {
-      fg = ORANGE,
-      bold = true,
-    })
-  end,
+  callback = set_bufferline_active_tab,
 })
+
+-- ==================================================
+-- nvim-tree color overrides
+-- ==================================================
+
+local function set_tree_colors()
+  vim.schedule(function()
+    vim.api.nvim_set_hl(0, "NvimTreeFolderName",        { fg = ORANGE })
+    vim.api.nvim_set_hl(0, "NvimTreeOpenedFolderName", { fg = ORANGE, bold = true })
+    vim.api.nvim_set_hl(0, "NvimTreeEmptyFolderName",  { fg = ORANGE })
+    vim.api.nvim_set_hl(0, "NvimTreeRootFolder",       { fg = ORANGE, bold = true })
+    vim.api.nvim_set_hl(0, "NvimTreeFileName",         { fg = WHITE })
+    vim.api.nvim_set_hl(0, "NvimTreeSymlink",          { fg = WHITE })
+  end)
+end
+
+set_tree_colors()
+vim.api.nvim_create_autocmd("ColorScheme", { callback = set_tree_colors })
 
 -- ==================================================
 -- Terminal toggle
@@ -280,6 +376,7 @@ vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 -- EMPTY BUFFER / WINDOW CLEANUP
 -- ==================================================
 
+-- Focus tree when no file buffers remain
 vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   callback = function()
     for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
@@ -298,6 +395,7 @@ vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   end,
 })
 
+-- Never show [No Name] buffers as tabs
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
     local buf = vim.api.nvim_get_current_buf()
@@ -310,6 +408,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
   end,
 })
 
+-- Close empty editor window when only tree remains
 local function cleanup_if_only_tree_left()
   for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
     if vim.api.nvim_buf_is_loaded(buf.bufnr)
@@ -365,9 +464,8 @@ vim.cmd([[
 -- ==================================================
 
 local function open_keys_help()
-  local PAD_X = 2
-  local PAD_Y = 1
-
+  local PAD_X = 2  -- horizontal padding (spaces)
+  local PAD_Y = 1  -- vertical padding (lines)
   local lines = {
     "[Keybindings Overview]",
     "",
@@ -413,10 +511,18 @@ local function open_keys_help()
   local buf = vim.api.nvim_create_buf(false, true)
   local padded = {}
 
-  for _ = 1, PAD_Y do table.insert(padded, "") end
+  for _ = 1, PAD_Y do
+    table.insert(padded, "")
+  end
+
   local prefix = string.rep(" ", PAD_X)
-  for _, line in ipairs(lines) do table.insert(padded, prefix .. line) end
-  for _ = 1, PAD_Y do table.insert(padded, "") end
+  for _, line in ipairs(lines) do
+    table.insert(padded, prefix .. line)
+  end
+
+  for _ = 1, PAD_Y do
+    table.insert(padded, "")
+  end
 
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, padded)
 
@@ -428,12 +534,13 @@ local function open_keys_help()
   local width  = 60 + PAD_X * 2
   local height = #padded + 1
   local ui = vim.api.nvim_list_uis()[1]
+
   local cmd_height = vim.o.cmdheight + (vim.o.laststatus > 0 and 1 or 0)
 
   local row = math.floor((ui.height - height) / 2) - math.floor(cmd_height / 2)
-  local col = math.floor((ui.width - width) / 2)
+  local col = math.floor((ui.width  - width)  / 2)
 
-  vim.api.nvim_open_win(buf, true, {
+  local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = width,
     height = height,
@@ -452,9 +559,9 @@ end
 vim.api.nvim_create_user_command("Keys", open_keys_help, {})
 
 vim.cmd([[
-  cnoreabbrev <expr> keys     getcmdtype()==':' && getcmdline()=='keys'     ? 'Keys' : 'keys'
-  cnoreabbrev <expr> keybinds getcmdtype()==':' && getcmdline()=='keybinds' ? 'Keys' : 'keybinds'
-  cnoreabbrev <expr> bindings getcmdtype()==':' && getcmdline()=='bindings' ? 'Keys' : 'bindings'
-  cnoreabbrev <expr> kb       getcmdtype()==':' && getcmdline()=='kb'       ? 'Keys' : 'kb'
-  cnoreabbrev <expr> ?        getcmdtype()==':' && getcmdline()=='?'        ? 'Keys' : '?'
+  cnoreabbrev <expr> keys      getcmdtype()==':' && getcmdline()=='keys'      ? 'Keys' : 'keys'
+  cnoreabbrev <expr> keybinds  getcmdtype()==':' && getcmdline()=='keybinds'  ? 'Keys' : 'keybinds'
+  cnoreabbrev <expr> bindings  getcmdtype()==':' && getcmdline()=='bindings'  ? 'Keys' : 'bindings'
+  cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
+  cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
