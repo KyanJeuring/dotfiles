@@ -1,6 +1,7 @@
 -- ==================================================
 -- Basic Neovim settings
 -- ==================================================
+vim.opt.splitkeep = "screen"
 
 vim.opt.showmode = false
 vim.opt.lazyredraw = true
