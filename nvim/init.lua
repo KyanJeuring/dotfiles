@@ -3,6 +3,9 @@
 -- ==================================================
 
 vim.opt.showmode = false
+vim.opt.lazyredraw = true
+vim.opt.updatetime = 200
+vim.opt.redrawtime = 1500
 
 vim.opt.number = true
 
@@ -120,14 +123,33 @@ vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 -- ==================================================
 
 if not vim.env.SSH_TTY then
+  local function is_real_file(buf)
+    return vim.bo[buf].buftype == ""
+      and vim.bo[buf].filetype ~= "NvimTree"
+  end
+
   vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
-    callback = function()
+    callback = function(ev)
+      local win = ev.win
+      if win and vim.api.nvim_win_get_config(win).relative ~= "" then
+        return
+      end
+      if not is_real_file(ev.buf) then
+        return
+      end
       vim.wo.cursorline = true
     end,
   })
 
   vim.api.nvim_create_autocmd("WinLeave", {
-    callback = function()
+    callback = function(ev)
+      local win = ev.win
+      if win and vim.api.nvim_win_get_config(win).relative ~= "" then
+        return
+      end
+      if not is_real_file(ev.buf) then
+        return
+      end
       vim.wo.cursorline = false
     end,
   })
