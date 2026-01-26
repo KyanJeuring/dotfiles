@@ -26,9 +26,6 @@ require("lazy").setup({
     "navarasu/onedark.nvim",
     lazy = false,
     priority = 1000,
-    config = function()
-      vim.cmd.colorscheme("onedark")
-    end,
   },
 
   -- ==================================================
@@ -279,5 +276,3 @@ require("lazy").setup({
   },
 
 })
-
-vim.cmd.colorscheme(vim.g.colors_name or "onedark")
