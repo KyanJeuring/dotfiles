@@ -256,6 +256,7 @@ require("lazy").setup({
         pattern = "NvimTree",
         callback = function()
           vim.opt_local.winfixwidth = true
+          vim.opt_local.winfixbuf = true
         end,
       })
 

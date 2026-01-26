@@ -75,37 +75,6 @@ end
 require("plugins")
 
 -- ==================================================
--- Ensure NvimTree width after UI is ready
--- ==================================================
-
-local function fix_tree_width()
-
-  local ok, api = pcall(require, "nvim-tree.api")
-  if not ok then
-    return
-  end
-
-  local view = api.tree.view
-  if view and view.winid then
-    vim.api.nvim_win_set_width(view.winid, 30)
-    vim.wo[view.winid].winfixwidth = true
-  end
-end
-
-vim.api.nvim_create_autocmd("VimEnter", {
-  callback = function()
-    vim.schedule(fix_tree_width)
-  end,
-})
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "NvimTree",
-  callback = function()
-    vim.schedule(fix_tree_width)
-  end,
-})
-
--- ==================================================
 -- Custom Keybindings
 -- ==================================================
 
