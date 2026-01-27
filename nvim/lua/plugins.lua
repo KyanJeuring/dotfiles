@@ -197,7 +197,7 @@ require("lazy").setup({
 
           vim.keymap.set("n", "<CR>", edit_no_split(api.node.open.edit), { buffer = bufnr })
           vim.keymap.set("n", "o",    edit_no_split(api.node.open.edit), { buffer = bufnr })
-        end
+        end,
 
         renderer = {
           group_empty = true,
