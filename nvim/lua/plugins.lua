@@ -173,17 +173,34 @@ require("lazy").setup({
           open_file = {
             quit_on_open = false,
             resize_window = false,
-            window_picker = { enable = false },
+            window_picker = {
+              enable = false,
+            },
           },
         },
 
         on_attach = function(bufnr)
-          local api = require("nvim-tree.api")
+          local function open_node()
+            local node = api.tree.get_node_under_cursor()
+            if not node then
+              return
+            end
 
-          api.config.mappings.default_on_attach(bufnr)
+            if node.type == "directory" then
+              api.node.open.edit()
+              return
+            end
 
-          vim.keymap.set("n", "<CR>", api.node.open.edit, { buffer = bufnr })
-          vim.keymap.set("n", "o",  api.node.open.edit, { buffer = bufnr })
+            if node.type == "file" then
+              vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
+            end
+          end
+
+          vim.keymap.set("n", "<CR>", open_node, {
+            buffer = bufnr,
+            silent = true,
+            nowait = true,
+          })
         end,
 
         renderer = {
@@ -226,10 +243,7 @@ require("lazy").setup({
           },
         },
 
-        update_focused_file = {
-          enable = true,
-          update_root = false,
-        },
+        update_focused_file = { enable = true },
         filters = { dotfiles = false },
         git = { enable = false },
       })
@@ -239,6 +253,19 @@ require("lazy").setup({
         pattern = "NvimTree",
         callback = function()
           vim.opt_local.winfixwidth = true
+        end,
+      })
+
+      -- Re-lock NvimTree width after first file open
+      vim.api.nvim_create_autocmd("BufWinEnter", {
+        callback = function()
+          for _, win in ipairs(vim.api.nvim_list_wins()) do
+            local buf = vim.api.nvim_win_get_buf(win)
+            if vim.bo[buf].filetype == "NvimTree" then
+              vim.api.nvim_win_set_width(win, 30)
+              vim.api.nvim_win_set_option(win, "winfixwidth", true)
+            end
+          end
         end,
       })
 

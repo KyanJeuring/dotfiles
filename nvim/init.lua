@@ -1,10 +1,8 @@
 -- ==================================================
 -- Basic Neovim settings
 -- ==================================================
+
 vim.opt.showmode = false
-vim.opt.lazyredraw = true
-vim.opt.updatetime = 200
-vim.opt.redrawtime = 1500
 
 vim.opt.number = true
 
@@ -56,8 +54,8 @@ vim.g.maplocalleader = " "
 
 if vim.fn.has("win32") == 1 then
   vim.env.PATH = vim.env.PATH
-    .. ";C:\\Program Files\\Git\\bin"
-    .. ";C:\\Program Files\\Git\\cmd"
+  .. ";C:\\Program Files\\Git\\bin"
+  .. ";C:\\Program Files\\Git\\cmd"
   vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
   vim.opt.shellcmdflag = "-lc"
   vim.opt.shellredir = ">"
@@ -71,18 +69,6 @@ end
 -- ==================================================
 
 require("plugins")
-
--- ==================================================
--- NvimTree auto-open on empty buffer / folder open
--- ==================================================
-
-vim.api.nvim_create_autocmd("VimEnter", {
-  callback = function()
-    if vim.fn.argc() == 0 then
-      require("nvim-tree.api").tree.open({ focus = false })
-    end
-  end,
-})
 
 -- ==================================================
 -- Custom Keybindings
@@ -130,25 +116,18 @@ vim.keymap.set({ "n", "v" }, "J", "G")
 vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 
 -- ==================================================
--- Highlight active window
+-- Highlight active window (clarifies resize target)
 -- ==================================================
 
 if not vim.env.SSH_TTY then
-  local function is_real_file(buf)
-    return vim.bo[buf].buftype == ""
-      and vim.bo[buf].filetype ~= "NvimTree"
-  end
-
   vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
-    callback = function(ev)
-      if not is_real_file(ev.buf) then return end
+    callback = function()
       vim.wo.cursorline = true
     end,
   })
 
   vim.api.nvim_create_autocmd("WinLeave", {
-    callback = function(ev)
-      if not is_real_file(ev.buf) then return end
+    callback = function()
       vim.wo.cursorline = false
     end,
   })
@@ -416,7 +395,7 @@ vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   end,
 })
 
--- Unlist empty buffers
+-- Never show [No Name] buffers as tabs
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
     local buf = vim.api.nvim_get_current_buf()
@@ -425,9 +404,6 @@ vim.api.nvim_create_autocmd("BufEnter", {
       and vim.bo[buf].filetype == ""
     then
       vim.bo[buf].buflisted = false
-      vim.opt_local.number = false
-      vim.opt_local.relativenumber = false
-      vim.opt_local.signcolumn = "no"
     end
   end,
 })
@@ -589,5 +565,3 @@ vim.cmd([[
   cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
   cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
-
-vim.opt.splitright = true
