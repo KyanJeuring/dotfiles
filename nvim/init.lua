@@ -107,13 +107,19 @@ vim.api.nvim_create_autocmd("User", {
 
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
-    local buf = vim.api.nvim_get_current_buf()
-    if vim.bo[buf].buftype == "" then
-      for _, win in ipairs(vim.api.nvim_list_wins()) do
-        local b = vim.api.nvim_win_get_buf(win)
-        if vim.bo[b].buftype == "nofile" then
-          pcall(vim.api.nvim_win_close, win, true)
-        end
+    local cur = vim.api.nvim_get_current_buf()
+
+    if vim.bo[cur].buftype ~= "" or vim.bo[cur].filetype == "NvimTree" then
+      return
+    end
+
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      local buf = vim.api.nvim_win_get_buf(win)
+      
+      if vim.bo[buf].buftype == "nofile"
+        and vim.bo[buf].buflisted == false
+      then
+        pcall(vim.api.nvim_win_close, win, true)
       end
     end
   end,
