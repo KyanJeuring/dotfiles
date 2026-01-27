@@ -297,7 +297,77 @@ gtemplate() {
 
 ## Show git status
 gs() {
-  git status
+  local branch upstream
+  local ahead=0 behind=0
+  local staged=0 unstaged=0 untracked=0 stash=0
+  local local_head remote_head
+  local state="CLEAN"
+
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+    err "Not a git repository"
+    return 1
+  }
+
+  branch="$(git branch --show-current)"
+
+  if upstream="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)"; then
+    read -r behind ahead < <(
+      git rev-list --left-right --count "$upstream"...HEAD
+    )
+    remote_head="$(git rev-parse --short "$upstream" 2>/dev/null)"
+  else
+    upstream=""
+    remote_head="N/A"
+  fi
+
+  local_head="$(git rev-parse --short HEAD)"
+
+  if git rev-parse --verify REBASE_HEAD >/dev/null 2>&1; then
+    state="REBASE"
+  elif git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+    state="MERGE"
+  elif git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+    state="CHERRY-PICK"
+  elif ! git symbolic-ref -q HEAD >/dev/null; then
+    state="DETACHED"
+  fi
+
+  while IFS= read -r line; do
+    case "$line" in
+      "?? "*) ((untracked++)) ;;
+      [AMDR]" "*) ((staged++)) ;;
+      " "[MD]" "*) ((unstaged++)) ;;
+    esac
+  done < <(git status --porcelain)
+
+  (( staged || unstaged || untracked )) && state="DIRTY"
+
+  stash="$(git stash list 2>/dev/null | wc -l)"
+
+  info "BRANCH   $branch"
+
+  [[ -n "$upstream" ]] && info "UPSTREAM $upstream"
+
+  if (( ahead || behind )); then
+    warn "SYNC     Ahead: $ahead | Behind: $behind"
+  else
+    ok "SYNC     Up to date"
+  fi
+
+  info "HEAD     Remote: $remote_head | Local: $local_head"
+
+  if (( staged || unstaged || untracked )); then
+    warn "WORK     staged: $staged | unstaged: $unstaged | untracked: $untracked"
+  fi
+
+  (( stash )) && warn "STASH    $stash"
+
+  case "$state" in
+    CLEAN)   ok   "STATE    CLEAN" ;;
+    DIRTY)   warn "STATE    DIRTY" ;;
+    REBASE|MERGE|CHERRY-PICK|DETACHED)
+             err  "STATE    $state" ;;
+  esac
 }
 
 ## Pretty git log
