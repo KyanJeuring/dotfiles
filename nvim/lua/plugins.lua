@@ -180,23 +180,7 @@ require("lazy").setup({
         },
 
         on_attach = function(bufnr)
-          local function open_node()
-            local node = api.tree.get_node_under_cursor()
-            if not node then
-              return
-            end
-
-            if node.type == "directory" then
-              api.node.open.edit()
-              return
-            end
-
-            if node.type == "file" then
-              vim.cmd("edit " .. vim.fn.fnameescape(node.absolute_path))
-            end
-          end
-
-          vim.keymap.set("n", "<CR>", open_node, {
+          vim.keymap.set("n", "<CR>", api.node.open.edit, {
             buffer = bufnr,
             silent = true,
             nowait = true,
