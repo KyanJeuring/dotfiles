@@ -80,12 +80,25 @@ require("plugins")
 
 vim.api.nvim_create_autocmd("VimEnter", {
   callback = function()
-    if vim.fn.argc() == 0 then
+    local argc = vim.fn.argc()
+    if argc == 0 then
       vim.schedule(function()
         vim.cmd("enew")
         vim.cmd("NvimTreeOpen")
         vim.cmd("wincmd p")
       end)
+      return
+    end
+    
+    if argc == 1 then
+      local arg = vim.fn.argv(0)
+      if vim.fn.isdirectory(arg) == 1 then
+        vim.schedule(function()
+          vim.cmd("enew")
+          vim.cmd("NvimTreeOpen")
+          vim.cmd("wincmd p")
+        end)
+      end
     end
   end,
 })
