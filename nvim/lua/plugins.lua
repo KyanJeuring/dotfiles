@@ -243,7 +243,7 @@ require("lazy").setup({
           },
         },
 
-        update_focused_file = { enable = true },
+        update_focused_file = { enable = false }
         filters = { dotfiles = false },
         git = { enable = false },
       })
@@ -271,7 +271,20 @@ require("lazy").setup({
 
       -- Existing keymaps (unchanged)
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { silent = true })
-      vim.keymap.set("n", "<leader>f", function() api.tree.focus() end, { silent = true })
+      vim.keymap.set("n", "<leader>f", function()
+        local api = require("nvim-tree.api")
+
+        -- Open tree if closed
+        if not api.tree.is_visible() then
+          api.tree.open()
+        end
+
+        -- Reveal current file and focus tree
+        api.tree.find_file({
+          open = true,
+          focus = true,
+        })
+      end, { silent = true, desc = "Focus tree on current file" })
     end,
   },
 
