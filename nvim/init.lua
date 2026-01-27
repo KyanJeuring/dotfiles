@@ -120,7 +120,7 @@ vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 -- ==================================================
 
 if not vim.env.SSH_TTY then
-  vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+  vim.api.nvim_create_autocmd("WinEnter", {
     callback = function()
       vim.wo.cursorline = true
     end,
