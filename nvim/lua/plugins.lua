@@ -243,7 +243,7 @@ require("lazy").setup({
           },
         },
 
-        update_focused_file = { enable = false }
+        update_focused_file = { enable = false },
         filters = { dotfiles = false },
         git = { enable = false },
       })
