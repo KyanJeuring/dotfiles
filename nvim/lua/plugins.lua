@@ -173,30 +173,31 @@ require("lazy").setup({
           open_file = {
             quit_on_open = false,
             resize_window = false,
-            window_picker = {
-              enable = false,
-            },
+            window_picker = { enable = false },
+            on_file_open = function()
+              vim.schedule(function()
+                vim.opt.splitkeep = "cursor"
+              end)
+            end,
           },
         },
 
         on_attach = function(bufnr)
           local api = require("nvim-tree.api")
 
-          local function edit_no_split(fn)
-            return function(...)
-              local old = vim.o.splitkeep
-              vim.o.splitkeep = "screen"
-              fn(...)
-              vim.schedule(function()
-                vim.o.splitkeep = old
-              end)
-            end
-          end
-
           api.config.mappings.default_on_attach(bufnr)
 
-          vim.keymap.set("n", "<CR>", edit_no_split(api.node.open.edit), { buffer = bufnr })
-          vim.keymap.set("n", "o",    edit_no_split(api.node.open.edit), { buffer = bufnr })
+          local function open_file_no_split()
+            local old = vim.opt.splitkeep
+            vim.opt.splitkeep = "screen"
+            api.node.open.edit()
+            vim.schedule(function()
+              vim.opt.splitkeep = old
+            end)
+          end
+
+          vim.keymap.set("n", "<CR>", open_file_no_split, { buffer = bufnr })
+          vim.keymap.set("n", "o",    open_file_no_split, { buffer = bufnr })
         end,
 
         renderer = {
