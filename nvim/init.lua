@@ -75,6 +75,22 @@ end
 require("plugins")
 
 -- ==================================================
+-- NvimTree auto-open on empty buffer / folder open
+-- ==================================================
+
+vim.api.nvim_create_autocmd("VimEnter", {
+  callback = function()
+    if vim.fn.argc() == 0 then
+      vim.schedule(function()
+        vim.cmd("enew")
+        vim.cmd("NvimTreeOpen")
+        vim.cmd("wincmd p")
+      end)
+    end
+  end,
+})
+
+-- ==================================================
 -- Custom Keybindings
 -- ==================================================
 
@@ -418,7 +434,7 @@ vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   end,
 })
 
--- Never show [No Name] buffers as tabs
+-- Hide placeholder [No Name] buffer from buffer list
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
     local buf = vim.api.nvim_get_current_buf()
@@ -427,6 +443,18 @@ vim.api.nvim_create_autocmd("BufEnter", {
       and vim.bo[buf].filetype == ""
     then
       vim.bo[buf].buflisted = false
+    end
+  end,
+})
+
+-- Disable line numbers and signcolumn in [No Name] buffers
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.api.nvim_buf_get_name(buf) == "" then
+      vim.opt_local.number = false
+      vim.opt_local.relativenumber = false
+      vim.opt_local.signcolumn = "no"
     end
   end,
 })
