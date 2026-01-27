@@ -434,7 +434,7 @@ vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
   end,
 })
 
--- Hide placeholder [No Name] buffer from buffer list
+-- Unlist empty buffers
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
     local buf = vim.api.nvim_get_current_buf()
@@ -443,15 +443,6 @@ vim.api.nvim_create_autocmd("BufEnter", {
       and vim.bo[buf].filetype == ""
     then
       vim.bo[buf].buflisted = false
-    end
-  end,
-})
-
--- Disable line numbers and signcolumn in [No Name] buffers
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function()
-    local buf = vim.api.nvim_get_current_buf()
-    if vim.api.nvim_buf_get_name(buf) == "" then
       vim.opt_local.number = false
       vim.opt_local.relativenumber = false
       vim.opt_local.signcolumn = "no"
