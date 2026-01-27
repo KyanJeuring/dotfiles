@@ -408,6 +408,33 @@ vim.keymap.set("n", "gT", ":bprevious<CR>", { silent = true })
 vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
 
 -- ==================================================
+-- EMPTY BUFFER / WINDOW CLEANUP
+-- ==================================================
+
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+
+    if vim.api.nvim_buf_get_name(buf) ~= "" then
+      return
+    end
+    if vim.bo[buf].buftype ~= "" then
+      return
+    end
+
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      local wbuf = vim.api.nvim_win_get_buf(win)
+      if vim.bo[wbuf].filetype == "NvimTree" then
+        vim.schedule(function()
+          pcall(vim.api.nvim_win_close, vim.api.nvim_get_current_win(), true)
+        end)
+        return
+      end
+    end
+  end,
+})
+
+-- ==================================================
 -- Make :q behave like closing a tab
 -- ==================================================
 
