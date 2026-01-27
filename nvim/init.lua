@@ -131,7 +131,7 @@ if not vim.env.SSH_TTY then
       vim.wo.cursorline = false
     end,
   })
-end,
+end
 
 -- ==================================================
 -- Theme
