@@ -122,18 +122,16 @@ vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 if not vim.env.SSH_TTY then
   vim.api.nvim_create_autocmd("WinEnter", {
     callback = function()
-      if vim.bo.filetype ~= "NvimTree" then
-        vim.opt_local.cursorline = true
-      end
+      vim.wo.cursorline = true
     end,
   })
 
   vim.api.nvim_create_autocmd("WinLeave", {
     callback = function()
-      vim.opt_local.cursorline = false
+      vim.wo.cursorline = false
     end,
   })
-end
+end,
 
 -- ==================================================
 -- Theme
