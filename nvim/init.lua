@@ -1,7 +1,7 @@
 -- ==================================================
 -- Basic Neovim settings
 -- ==================================================
-vim.opt.splitkeep = "screen"
+vim.opt.splitkeep = "cursor"
 
 vim.opt.showmode = false
 vim.opt.lazyredraw = true
@@ -78,49 +78,10 @@ require("plugins")
 -- NvimTree auto-open on empty buffer / folder open
 -- ==================================================
 
-vim.api.nvim_create_autocmd("User", {
-  pattern = "NvimTreeOpen",
+vim.api.nvim_create_autocmd("VimEnter", {
   callback = function()
-    if #vim.api.nvim_list_wins() == 1 then
-      vim.cmd("vsplit")
-      vim.cmd("wincmd l")
-
-      -- create invisible scratch buffer
-      vim.cmd("enew")
-      vim.bo.buftype = "nofile"
-      vim.bo.bufhidden = "wipe"
-      vim.bo.swapfile = false
-      vim.bo.buflisted = false
-      vim.bo.modifiable = false
-
-      -- make it visually disappear
-      vim.opt_local.number = false
-      vim.opt_local.relativenumber = false
-      vim.opt_local.signcolumn = "no"
-      vim.opt_local.cursorline = false
-      vim.opt_local.statusline = " "
-
-      vim.cmd("wincmd h")
-    end
-  end,
-})
-
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function()
-    local cur = vim.api.nvim_get_current_buf()
-
-    if vim.bo[cur].buftype ~= "" or vim.bo[cur].filetype == "NvimTree" then
-      return
-    end
-
-    for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local buf = vim.api.nvim_win_get_buf(win)
-      
-      if vim.bo[buf].buftype == "nofile"
-        and vim.bo[buf].buflisted == false
-      then
-        pcall(vim.api.nvim_win_close, win, true)
-      end
+    if vim.fn.argc() == 0 then
+      require("nvim-tree.api").tree.open({ focus = false })
     end
   end,
 })
@@ -445,76 +406,6 @@ vim.keymap.set("n", "<S-Tab>", ":bprevious<CR>", { silent = true })
 vim.keymap.set("n", "gt", ":bnext<CR>", { silent = true })
 vim.keymap.set("n", "gT", ":bprevious<CR>", { silent = true })
 vim.keymap.set("n", "<leader>x", close_buffer_tab, { silent = true })
-
--- ==================================================
--- EMPTY BUFFER / WINDOW CLEANUP
--- ==================================================
-
--- Focus tree when no file buffers remain
-vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
-  callback = function()
-    for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-      if vim.api.nvim_buf_is_loaded(buf.bufnr)
-        and vim.bo[buf.bufnr].buftype == ""
-        and vim.bo[buf.bufnr].filetype ~= "NvimTree"
-      then
-        return
-      end
-    end
-
-    vim.schedule(function()
-      local ok, api = pcall(require, "nvim-tree.api")
-      if ok then api.tree.focus() end
-    end)
-  end,
-})
-
--- Unlist empty buffers
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function()
-    local buf = vim.api.nvim_get_current_buf()
-    if vim.api.nvim_buf_get_name(buf) == ""
-      and vim.bo[buf].buftype == ""
-      and vim.bo[buf].filetype == ""
-    then
-      vim.bo[buf].buflisted = false
-      vim.opt_local.number = false
-      vim.opt_local.relativenumber = false
-      vim.opt_local.signcolumn = "no"
-    end
-  end,
-})
-
--- Close empty editor window when only tree remains
-local function cleanup_if_only_tree_left()
-  for _, buf in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
-    if vim.api.nvim_buf_is_loaded(buf.bufnr)
-      and vim.bo[buf.bufnr].buftype == ""
-      and vim.bo[buf.bufnr].filetype ~= "NvimTree"
-    then
-      return
-    end
-  end
-
-  vim.schedule(function()
-    for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local cfg = vim.api.nvim_win_get_config(win)
-      if cfg.relative ~= "" then
-        goto continue
-      end
-
-      local buf = vim.api.nvim_win_get_buf(win)
-      if vim.bo[buf].filetype ~= "NvimTree" then
-        pcall(vim.api.nvim_win_close, win, true)
-      end
-      ::continue::
-    end
-  end)
-end
-
-vim.api.nvim_create_autocmd({ "BufDelete", "WinClosed" }, {
-  callback = cleanup_if_only_tree_left,
-})
 
 -- ==================================================
 -- Make :q behave like closing a tab
