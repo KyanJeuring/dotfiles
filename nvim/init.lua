@@ -58,8 +58,8 @@ vim.g.maplocalleader = " "
 
 if vim.fn.has("win32") == 1 then
   vim.env.PATH = vim.env.PATH
-  .. ";C:\\Program Files\\Git\\bin"
-  .. ";C:\\Program Files\\Git\\cmd"
+    .. ";C:\\Program Files\\Git\\bin"
+    .. ";C:\\Program Files\\Git\\cmd"
   vim.opt.shell = [[C:\Program Files\Git\bin\bash.exe]]
   vim.opt.shellcmdflag = "-lc"
   vim.opt.shellredir = ">"
@@ -132,7 +132,7 @@ vim.keymap.set({ "n", "v" }, "J", "G")
 vim.keymap.set("n", "U", "<C-r>", { desc = "Redo" })
 
 -- ==================================================
--- Highlight active window (clarifies resize target)
+-- Highlight active window
 -- ==================================================
 
 if not vim.env.SSH_TTY then
@@ -143,26 +143,14 @@ if not vim.env.SSH_TTY then
 
   vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
     callback = function(ev)
-      local win = ev.win
-      if win and vim.api.nvim_win_get_config(win).relative ~= "" then
-        return
-      end
-      if not is_real_file(ev.buf) then
-        return
-      end
+      if not is_real_file(ev.buf) then return end
       vim.wo.cursorline = true
     end,
   })
 
   vim.api.nvim_create_autocmd("WinLeave", {
     callback = function(ev)
-      local win = ev.win
-      if win and vim.api.nvim_win_get_config(win).relative ~= "" then
-        return
-      end
-      if not is_real_file(ev.buf) then
-        return
-      end
+      if not is_real_file(ev.buf) then return end
       vim.wo.cursorline = false
     end,
   })

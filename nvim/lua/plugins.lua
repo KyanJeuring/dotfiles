@@ -180,12 +180,24 @@ require("lazy").setup({
         },
 
         on_attach = function(bufnr)
-          vim.keymap.set("n", "<CR>", api.node.open.edit, {
-            buffer = bufnr,
-            silent = true,
-            nowait = true,
-          })
-        end,
+          local api = require("nvim-tree.api")
+
+          local function edit_no_split(fn)
+            return function(...)
+              local old = vim.o.splitkeep
+              vim.o.splitkeep = "screen"
+              fn(...)
+              vim.schedule(function()
+                vim.o.splitkeep = old
+              end)
+            end
+          end
+
+          api.config.mappings.default_on_attach(bufnr)
+
+          vim.keymap.set("n", "<CR>", edit_no_split(api.node.open.edit), { buffer = bufnr })
+          vim.keymap.set("n", "o",    edit_no_split(api.node.open.edit), { buffer = bufnr })
+        end
 
         renderer = {
           group_empty = true,
