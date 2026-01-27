@@ -78,26 +78,42 @@ require("plugins")
 -- NvimTree auto-open on empty buffer / folder open
 -- ==================================================
 
-vim.api.nvim_create_autocmd("VimEnter", {
+vim.api.nvim_create_autocmd("User", {
+  pattern = "NvimTreeOpen",
   callback = function()
-    local argc = vim.fn.argc()
-    if argc == 0 then
-      vim.schedule(function()
-        vim.cmd("enew")
-        vim.cmd("NvimTreeOpen")
-        vim.cmd("wincmd p")
-      end)
-      return
+    if #vim.api.nvim_list_wins() == 1 then
+      vim.cmd("vsplit")
+      vim.cmd("wincmd l")
+
+      -- create invisible scratch buffer
+      vim.cmd("enew")
+      vim.bo.buftype = "nofile"
+      vim.bo.bufhidden = "wipe"
+      vim.bo.swapfile = false
+      vim.bo.buflisted = false
+      vim.bo.modifiable = false
+
+      -- make it visually disappear
+      vim.opt_local.number = false
+      vim.opt_local.relativenumber = false
+      vim.opt_local.signcolumn = "no"
+      vim.opt_local.cursorline = false
+      vim.opt_local.statusline = " "
+
+      vim.cmd("wincmd h")
     end
-    
-    if argc == 1 then
-      local arg = vim.fn.argv(0)
-      if vim.fn.isdirectory(arg) == 1 then
-        vim.schedule(function()
-          vim.cmd("enew")
-          vim.cmd("NvimTreeOpen")
-          vim.cmd("wincmd p")
-        end)
+  end,
+})
+
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.bo[buf].buftype == "" then
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local b = vim.api.nvim_win_get_buf(win)
+        if vim.bo[b].buftype == "nofile" then
+          pcall(vim.api.nvim_win_close, win, true)
+        end
       end
     end
   end,
@@ -620,3 +636,5 @@ vim.cmd([[
   cnoreabbrev <expr> kb        getcmdtype()==':' && getcmdline()=='kb'        ? 'Keys' : 'kb'
   cnoreabbrev <expr> ?         getcmdtype()==':' && getcmdline()=='?'         ? 'Keys' : '?'
 ]])
+
+vim.opt.splitright = true
