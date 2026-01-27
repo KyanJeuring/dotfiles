@@ -303,6 +303,12 @@ gs() {
   local local_head remote_head
   local state="CLEAN"
 
+  _gs_line() {
+    local label="$1"
+    shift
+    printf "%-8s %s" "$label" "$*"
+  }
+
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
     err "Not a git repository"
     return 1
@@ -344,29 +350,28 @@ gs() {
 
   stash="$(git stash list 2>/dev/null | wc -l)"
 
-  info "BRANCH   $branch"
+  info "$(_gs_line BRANCH   "$branch")"
 
-  [[ -n "$upstream" ]] && info "UPSTREAM $upstream"
+  [[ -n "$upstream" ]] && info "$(_gs_line UPSTREAM "$upstream")"
 
   if (( ahead || behind )); then
-    warn "SYNC     Ahead: $ahead | Behind: $behind"
+    warn "$(_gs_line SYNC "Ahead: $ahead | Behind: $behind")"
   else
-    ok "SYNC     Up to date"
+    ok   "$(_gs_line SYNC "Up to date")"
   fi
 
-  info "HEAD     Remote: $remote_head | Local: $local_head"
+  info "$(_gs_line HEAD "Remote: $remote_head | Local: $local_head")"
 
   if (( staged || unstaged || untracked )); then
-    warn "WORK     staged: $staged | unstaged: $unstaged | untracked: $untracked"
+    warn "$(_gs_line WORK "staged: $staged | unstaged: $unstaged | untracked: $untracked")"
   fi
 
-  (( stash )) && warn "STASH    $stash"
+  (( stash )) && warn "$(_gs_line STASH "$stash")"
 
   case "$state" in
-    CLEAN)   ok   "STATE    CLEAN" ;;
-    DIRTY)   warn "STATE    DIRTY" ;;
-    REBASE|MERGE|CHERRY-PICK|DETACHED)
-             err  "STATE    $state" ;;
+    CLEAN)   ok   "$(_gs_line STATE CLEAN)" ;;
+    DIRTY)   warn "$(_gs_line STATE DIRTY)" ;;
+    *)       err  "$(_gs_line STATE "$state")" ;;
   esac
 }
 
