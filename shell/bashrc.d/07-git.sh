@@ -302,23 +302,51 @@ gs() {
   local staged=0 unstaged=0 untracked=0 stash=0
   local local_head remote_head
   local state="CLEAN"
+  local SHOW_FILES=1
+  local MAX_FILES=5
+
+  case "${1:-}" in
+    --short|-s)
+      SHOW_FILES=0
+      ;;
+  esac
+
+  if [[ -t 1 ]]; then
+    C_STAGED="\033[0;32m"
+    C_UNSTAGED="\033[0;33m"
+    C_UNTRACKED="\033[0;31m"
+    C_RENAME="\033[0;36m"
+    C_RESET="\033[0m"
+  else
+    C_STAGED=""; C_UNSTAGED=""; C_UNTRACKED=""; C_RENAME=""; C_RESET=""
+  fi
 
   _gs_line() {
-    local label="$1"
-    shift
-    printf "%-8s %s" "$label" "$*"
+    printf "%-8s %s" "$1" "$2"
   }
 
-  _pad_ok="  "
-  _pad_err=" "
-  _pad_none=""
+  _gs_files() {
+    local label="$1" color="$2"; shift 2
+    local files=("$@")
+    local total="${#files[@]}"
+    local shown=0
+
+    for f in "${files[@]}"; do
+      (( shown++ > MAX_FILES )) && break
+      info "         ${color}${label}:${C_RESET} $f"
+    done
+
+    (( total > MAX_FILES )) &&
+      info "         ${color}… +$((total - MAX_FILES)) more${C_RESET}"
+  }
 
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
-    err "${_pad_err}Not a git repository"
+    err " Not a git repository"
     return 1
   }
 
   branch="$(git branch --show-current)"
+  local_head="$(git rev-parse --short HEAD)"
 
   if upstream="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)"; then
     read -r behind ahead < <(
@@ -330,8 +358,6 @@ gs() {
     remote_head="N/A"
   fi
 
-  local_head="$(git rev-parse --short HEAD)"
-
   if git rev-parse --verify REBASE_HEAD >/dev/null 2>&1; then
     state="REBASE"
   elif git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
@@ -342,11 +368,37 @@ gs() {
     state="DETACHED"
   fi
 
+  local staged_files=()
+  local unstaged_files=()
+  local untracked_files=()
+
   while IFS= read -r line; do
-    case "$line" in
-      "?? "*) ((untracked++)) ;;
-      [AMDR]" "*) ((staged++)) ;;
-      " "[MD]" "*) ((unstaged++)) ;;
+    local xy="${line:0:2}"
+    local rest="${line:3}"
+
+    case "$xy" in
+      "??")
+        ((untracked++))
+        untracked_files+=("$rest")
+        ;;
+      R*)
+        ((staged++))
+        staged_files+=("${rest/ -> / → }")
+        ;;
+      [AMDC]" ")
+        ((staged++))
+        staged_files+=("$rest")
+        ;;
+      " "[MD])
+        ((unstaged++))
+        unstaged_files+=("$rest")
+        ;;
+      *)
+        ((staged++))
+        ((unstaged++))
+        staged_files+=("$rest")
+        unstaged_files+=("$rest")
+        ;;
     esac
   done < <(git status --porcelain)
 
@@ -354,28 +406,37 @@ gs() {
 
   stash="$(git stash list 2>/dev/null | wc -l)"
 
-  info "${_pad_none}$(_gs_line BRANCH   "$branch")"
-
-  [[ -n "$upstream" ]] && info "${_pad_none}$(_gs_line UPSTREAM "$upstream")"
+  info "$(_gs_line BRANCH   "$branch")"
+  [[ -n "$upstream" ]] && info "$(_gs_line UPSTREAM "$upstream")"
 
   if (( ahead || behind )); then
-    warn "${_pad_none}$(_gs_line SYNC "Ahead: $ahead | Behind: $behind")"
+    warn "$(_gs_line SYNC "Ahead: $ahead | Behind: $behind")"
   else
-    ok   "${_pad_ok}$(_gs_line SYNC "Up to date")"
+    ok   "$(_gs_line SYNC "Up to date")"
   fi
 
-  info "${_pad_none}$(_gs_line HEAD "Remote: $remote_head | Local: $local_head")"
+  info "$(_gs_line HEAD "Remote: $remote_head | Local: $local_head")"
 
   if (( staged || unstaged || untracked )); then
-    warn "${_pad_none}$(_gs_line WORK "staged: $staged | unstaged: $unstaged | untracked: $untracked")"
+    warn "$(_gs_line WORK "staged: $staged | unstaged: $unstaged | untracked: $untracked")"
+
+    if (( SHOW_FILES )); then
+      mapfile -t staged_files   < <(printf '%s\n' "${staged_files[@]}"   | sort)
+      mapfile -t unstaged_files < <(printf '%s\n' "${unstaged_files[@]}" | sort)
+      mapfile -t untracked_files< <(printf '%s\n' "${untracked_files[@]}"| sort)
+
+      (( staged ))    && _gs_files "Staged"    "$C_STAGED"    "${staged_files[@]}"
+      (( unstaged ))  && _gs_files "Unstaged"  "$C_UNSTAGED"  "${unstaged_files[@]}"
+      (( untracked )) && _gs_files "Untracked" "$C_UNTRACKED" "${untracked_files[@]}"
+    fi
   fi
 
-  (( stash )) && warn "${_pad_none}$(_gs_line STASH "$stash")"
+  (( stash )) && warn "$(_gs_line STASH "$stash")"
 
   case "$state" in
-    CLEAN)   ok   "${_pad_ok}$(_gs_line STATE CLEAN)" ;;
-    DIRTY)   warn "${_pad_none}$(_gs_line STATE DIRTY)" ;;
-    *)       err  "${_pad_err}$(_gs_line STATE "$state")" ;;
+    CLEAN) ok   "$(_gs_line STATE CLEAN)" ;;
+    DIRTY) warn "$(_gs_line STATE DIRTY)" ;;
+    *)     err  "$(_gs_line STATE "$state")" ;;
   esac
 }
 
