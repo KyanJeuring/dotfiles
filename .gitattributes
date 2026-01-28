@@ -1,5 +1,5 @@
 # Normalize text files to avoid OS-specific diffs
-* text=auto
+* text=auto* text=auto eol=lf
 
 # Treat common binary files correctly
 *.png  binary
