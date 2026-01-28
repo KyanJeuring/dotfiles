@@ -406,19 +406,23 @@ gs() {
 
   stash="$(git stash list 2>/dev/null | wc -l)"
 
-  info "$(_gs_line BRANCH   "$branch")"
-  [[ -n "$upstream" ]] && info "$(_gs_line UPSTREAM "$upstream")"
+  local _pad_ok="  "
+  local _pad_err=" "
+  local _pad_none=""
+
+  info "${_pad_none}$(_gs_line BRANCH   "$branch")"
+  [[ -n "$upstream" ]] && info "${_pad_none}$(_gs_line UPSTREAM "$upstream")"
 
   if (( ahead || behind )); then
-    warn "$(_gs_line SYNC "Ahead: $ahead | Behind: $behind")"
+    warn "${_pad_none}$(_gs_line SYNC "Ahead: $ahead | Behind: $behind")"
   else
-    ok   "$(_gs_line SYNC "Up to date")"
+    ok "${_pad_ok}$(_gs_line SYNC "Up to date")"
   fi
 
-  info "$(_gs_line HEAD "Remote: $remote_head | Local: $local_head")"
+  info "${_pad_none}$(_gs_line HEAD "Remote: $remote_head | Local: $local_head")"
 
   if (( staged || unstaged || untracked )); then
-    warn "$(_gs_line WORK "staged: $staged | unstaged: $unstaged | untracked: $untracked")"
+    warn "${_pad_none}$(_gs_line WORK "staged: $staged | unstaged: $unstaged | untracked: $untracked")"
 
     if (( SHOW_FILES )); then
       mapfile -t staged_files   < <(printf '%s\n' "${staged_files[@]}"   | sort)
@@ -431,12 +435,12 @@ gs() {
     fi
   fi
 
-  (( stash )) && warn "$(_gs_line STASH "$stash")"
+  (( stash )) && warn "${_pad_none}$(_gs_line STASH "$stash")"
 
   case "$state" in
-    CLEAN) ok   "$(_gs_line STATE CLEAN)" ;;
-    DIRTY) warn "$(_gs_line STATE DIRTY)" ;;
-    *)     err  "$(_gs_line STATE "$state")" ;;
+    CLEAN)   ok   "${_pad_ok}$(_gs_line STATE CLEAN)" ;;
+    DIRTY)   warn "${_pad_none}$(_gs_line STATE DIRTY)" ;;
+    *)       err  "${_pad_err}$(_gs_line STATE "$state")" ;;
   esac
 }
 
